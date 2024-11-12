@@ -1,6 +1,6 @@
 [package]
 name = "sqlx-paginated"
-version = "0.2.23"
+version = "0.2.24"
 edition = "2021"
 authors = ["@alexandrughinea"]
 description = "A flexible, type-safe SQLx query builder for dynamic web APIs, offering seamless pagination, searching, filtering, and sorting."

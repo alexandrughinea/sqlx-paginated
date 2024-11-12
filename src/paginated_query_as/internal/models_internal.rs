@@ -4,8 +4,8 @@ use crate::paginated_query_as::internal::{
     search_columns_deserialize, search_deserialize,
 };
 
+use crate::paginated_query_as::QueryDateTime;
 use crate::QuerySortDirection;
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -71,8 +71,8 @@ impl Default for QuerySearchParams {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "snake_case")]
 pub struct QueryDateRangeParams {
-    pub date_after: Option<DateTime<Utc>>,
-    pub date_before: Option<DateTime<Utc>>,
+    pub date_after: Option<QueryDateTime>,
+    pub date_before: Option<QueryDateTime>,
     #[serde(default = "default_date_range_column")]
     pub date_column: Option<String>,
 }

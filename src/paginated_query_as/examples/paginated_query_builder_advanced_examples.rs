@@ -1,5 +1,5 @@
 use crate::paginated_query_as::QueryParamsBuilder;
-use crate::{paginated_query_as, QueryBuilder};
+use crate::{paginated_query_as, QueryBuilder, QueryDateTime};
 use crate::{PaginatedResponse, QuerySortDirection};
 use chrono::Utc;
 use serde::Serialize;
@@ -23,10 +23,11 @@ pub async fn paginated_query_builder_advanced_example(
 ) -> PaginatedResponse<UserExample> {
     let some_extra_filters =
         HashMap::from([("a", Some("1".to_string())), ("b", Some("2".to_string()))]);
+    let date_after = QueryDateTime::TimestampTz(Utc::now());
     let initial_params = QueryParamsBuilder::<UserExample>::new()
         .with_search("john", vec!["name", "email"])
         .with_pagination(1, 10)
-        .with_date_range(Some(Utc::now()), None, None::<String>)
+        .with_date_range(Some(date_after), None, None::<String>)
         .with_filter("status", Some("active"))
         .with_filters(some_extra_filters)
         .with_sort("created_at", QuerySortDirection::Descending)

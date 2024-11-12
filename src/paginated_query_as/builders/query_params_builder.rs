@@ -4,8 +4,8 @@ use crate::paginated_query_as::internal::{
     DEFAULT_PAGE,
 };
 use crate::paginated_query_as::models::QuerySortDirection;
+use crate::paginated_query_as::QueryDateTime;
 use crate::QueryParams;
-use chrono::{DateTime, Utc};
 use serde::Serialize;
 use std::collections::HashMap;
 
@@ -155,7 +155,7 @@ impl<'q, T: Default + Serialize> QueryParamsBuilder<'q, T> {
     /// ```rust
     /// use chrono::{DateTime, Utc};
     /// use serde::{Serialize};
-    /// use sqlx_paginated::{QueryParamsBuilder, QuerySortDirection};
+    /// use sqlx_paginated::{QueryDateTime, QueryParamsBuilder, QuerySortDirection};
     ///
     /// #[derive(Serialize, Default)]
     /// struct UserExample {
@@ -163,8 +163,8 @@ impl<'q, T: Default + Serialize> QueryParamsBuilder<'q, T> {
     ///     updated_at: DateTime<Utc>
     /// }
     ///
-    /// let start = DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z").unwrap().into();
-    /// let end = DateTime::parse_from_rfc3339("2024-12-31T23:59:59Z").unwrap().into();
+    /// let start = QueryDateTime::TimestampTz(DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z").unwrap().into());
+    /// let end = QueryDateTime::TimestampTz(DateTime::parse_from_rfc3339("2024-12-31T23:59:59Z").unwrap().into());
     ///
     /// let params = QueryParamsBuilder::<UserExample>::new()
     ///     .with_date_range(Some(start), Some(end), Some("updated_at"))
@@ -172,8 +172,8 @@ impl<'q, T: Default + Serialize> QueryParamsBuilder<'q, T> {
     /// ```
     pub fn with_date_range(
         mut self,
-        date_after: Option<DateTime<Utc>>,
-        date_before: Option<DateTime<Utc>>,
+        date_after: Option<QueryDateTime>,
+        date_before: Option<QueryDateTime>,
         column_name: Option<impl Into<String>>,
     ) -> Self {
         self.query.date_range = QueryDateRangeParams {
@@ -539,6 +539,8 @@ mod tests {
 
     #[test]
     fn test_full_params() {
+        let date_after = QueryDateTime::TimestampTz(Utc::now());
+
         let params = QueryParamsBuilder::<TestModel>::new()
             .with_pagination(2, 20)
             .with_sort("updated_at".to_string(), QuerySortDirection::Ascending)
@@ -546,7 +548,7 @@ mod tests {
                 "test".to_string(),
                 vec!["title".to_string(), "description".to_string()],
             )
-            .with_date_range(Some(Utc::now()), None, None::<String>)
+            .with_date_range(Some(date_after), None, None::<String>)
             .build();
 
         assert_eq!(params.pagination.page, 2);

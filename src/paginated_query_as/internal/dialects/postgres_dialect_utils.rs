@@ -1,6 +1,7 @@
 use crate::paginated_query_as::internal::DEFAULT_EMPTY_VALUE;
-use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime};
+use crate::QueryDateTime;
 use sqlx::types::Uuid;
+use sqlx::Postgres;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 pub fn get_postgres_type_casting(value: &str) -> &'static str {
@@ -20,6 +21,18 @@ pub fn get_postgres_type_casting(value: &str) -> &'static str {
             "::bytea"
         }
 
+        // Network types
+        value if value.parse::<IpAddr>().is_ok() => "::inet", // IPv4 and IPv6 networks
+        value if value.parse::<Ipv4Addr>().is_ok() => "::inet", // IPv4 address
+        value if value.parse::<Ipv6Addr>().is_ok() => "::inet", // IPv6 address
+
+        // UUIDs
+        value if Uuid::parse_str(value).is_ok() => "::uuid",
+
+        // Booleans
+        value if value == "t" || value == "f" => "::boolean",
+        value if value == "true" || value == "false" => "::boolean",
+
         // JSON
         value if value.starts_with('{') || value.starts_with('[') => {
             match serde_json::from_str::<serde_json::Value>(value) {
@@ -33,27 +46,12 @@ pub fn get_postgres_type_casting(value: &str) -> &'static str {
             "::xml"
         }
 
-        // Network types
-        value if value.parse::<IpAddr>().is_ok() => "::inet", // IPv4 and IPv6 networks
-        value if value.parse::<Ipv4Addr>().is_ok() => "::inet", // IPv4 address
-        value if value.parse::<Ipv6Addr>().is_ok() => "::inet", // IPv6 address
+        // Datetime/Date/Time
+        value if QueryDateTime::parse_str(value).is_ok() => QueryDateTime::parse_str(value)
+            .unwrap()
+            .to_sql_string::<Postgres>(),
 
-        // UUIDs
-        value if Uuid::parse_str(value).is_ok() => "::uuid",
-
-        // Dates and Times
-        value if NaiveDateTime::parse_from_str(value, "%Y-%m-%d %H:%M:%S").is_ok() => {
-            "::timestamp without time zone"
-        }
-        value if NaiveDate::parse_from_str(value, "%Y-%m-%d").is_ok() => "::date",
-        value if NaiveTime::parse_from_str(value, "%H:%M:%S").is_ok() => "::time",
-        value if DateTime::parse_from_rfc3339(value).is_ok() => "::timestamp with time zone",
-
-        // Booleans
-        value if value == "t" || value == "f" => "::boolean",
-        value if value == "true" || value == "false" => "::boolean",
-
-        // Numbers
+        // Numeric
         value if value.parse::<i16>().is_ok() => "::smallint", // 2-byte integer
         value if value.parse::<i32>().is_ok() => "::integer",  // 4-byte integer
         value if value.parse::<i64>().is_ok() => "::bigint",   // 8-byte integer

@@ -167,17 +167,21 @@ mod tests {
         // Timestamp without timezone
         assert_eq!(
             get_postgres_type_casting("2024-01-01 12:34:56"),
-            "::timestamp without time zone"
+            "::timestamp"
         );
 
         // Timestamp with timezone
         assert_eq!(
             get_postgres_type_casting("2024-01-01T12:34:56Z"),
-            "::timestamp with time zone"
+            "::timestamptz"
         );
         assert_eq!(
             get_postgres_type_casting("2024-01-01T12:34:56+00:00"),
-            "::timestamp with time zone"
+            "::timestamptz"
+        );
+        assert_eq!(
+            get_postgres_type_casting("2024-11-03T12:30:12.081598Z"),
+            "::timestamptz"
         );
     }
 

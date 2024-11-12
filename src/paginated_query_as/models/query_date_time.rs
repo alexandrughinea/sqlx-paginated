@@ -40,8 +40,8 @@ impl QueryDateTime {
     pub fn to_sql_string<DB: Database>(&self) -> &'static str {
         match type_name::<DB>() {
             "sqlx_postgres::database::Postgres" => match self {
-                QueryDateTime::TimestampTz(_) => "::timestamp with time zone",
-                QueryDateTime::Timestamp(_) => "::timestamp without time zone",
+                QueryDateTime::TimestampTz(_) => "::timestamptz",
+                QueryDateTime::Timestamp(_) => "::timestamp",
                 QueryDateTime::Date(_) => "::date",
                 QueryDateTime::Time(_) => "::time",
             },

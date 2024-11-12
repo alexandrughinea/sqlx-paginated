@@ -269,24 +269,24 @@ GET /v1/internal/users?date_column=created_at&date_after=2024-01-01T00:00:00Z
 | * | string,boolean,datetime,numeric,binary,json,xml,network,uuid | null | 100 | Any valid table column for given struct |
 
 ### Type Support Across Databases
-| Type Category | Subtypes | PostgreSQL | MySQL | SQLite | Format/Range |
-|--------------|----------|------------|--------|---------|--------------|
-| string | text | Default string | No cast | No cast | Any text value |
-| boolean | true/false | ::boolean ("true"/"false", "t"/"f") | CAST AS SIGNED (1/0) | CAST AS INTEGER (1/0) | "true"/"false", "t"/"f", 1/0 |
-| numeric | smallint | ::smallint | CAST AS SIGNED | CAST AS INTEGER | -32768 to +32767 |
-| | integer | ::integer | CAST AS SIGNED | CAST AS INTEGER | -2^31 to 2^31-1 |
-| | bigint | ::bigint | CAST AS SIGNED | CAST AS INTEGER | -2^63 to 2^63-1 |
-| | real | ::real | CAST AS FLOAT | CAST AS REAL | 4-byte float |
-| | double precision | ::double precision | CAST AS DOUBLE | CAST AS REAL | 8-byte float |
-| datetime | timestamp | ::timestamp without time zone | AS DATETIME | AS DATETIME | "YYYY-MM-DD HH:MM:SS" |
-| | timestamptz | ::timestamp with time zone | AS TIMESTAMP | AS TIMESTAMP | RFC3339 format |
-| | date | ::date | AS DATE | AS DATE | "YYYY-MM-DD" |
-| | time | ::time | AS TIME | AS TIME | "HH:MM:SS" |
-| binary | bytea/blob | ::bytea | No cast (BLOB) | No cast (BLOB) | \x followed by hex digits |
-| json | json/jsonb | ::jsonb | CAST AS JSON | Store as text | Valid JSON starting with { or [ |
-| xml | xml | ::xml | Store as text | Store as text | Starts with <?xml or valid tags |
-| network | inet | ::inet | Store as text | Store as text | IPv4 or IPv6 address |
-| uuid | uuid | ::uuid | Store as char(36) | Store as text | Standard UUID format |
+| Type Category | Subtypes                    | PostgreSQL | MySQL | SQLite | Format/Range |
+|--------------|-----------------------------|------------|--------|---------|--------------|
+| string | text                        | Default string | No cast | No cast | Any text value |
+| boolean | true/false                  | ::boolean ("true"/"false", "t"/"f") | CAST AS SIGNED (1/0) | CAST AS INTEGER (1/0) | "true"/"false", "t"/"f", 1/0 |
+| numeric | smallint                    | ::smallint | CAST AS SIGNED | CAST AS INTEGER | -32768 to +32767 |
+| | integer                     | ::integer | CAST AS SIGNED | CAST AS INTEGER | -2^31 to 2^31-1 |
+| | bigint                      | ::bigint | CAST AS SIGNED | CAST AS INTEGER | -2^63 to 2^63-1 |
+| | real                        | ::real | CAST AS FLOAT | CAST AS REAL | 4-byte float |
+| | double precision            | ::double precision | CAST AS DOUBLE | CAST AS REAL | 8-byte float |
+| datetime | timestamp without time zone | ::timestamp | AS DATETIME | AS DATETIME | "YYYY-MM-DD HH:MM:SS" |
+| | timestamp with time zone    | ::timestamptz | AS TIMESTAMP | AS TIMESTAMP | RFC3339 format |
+| | date                        | ::date | AS DATE | AS DATE | "YYYY-MM-DD" |
+| | time                        | ::time | AS TIME | AS TIME | "HH:MM:SS" |
+| binary | bytea/blob                  | ::bytea | No cast (BLOB) | No cast (BLOB) | \x followed by hex digits |
+| json | json/jsonb                  | ::jsonb | CAST AS JSON | Store as text | Valid JSON starting with { or [ |
+| xml | xml                         | ::xml | Store as text | Store as text | Starts with <?xml or valid tags |
+| network | inet                        | ::inet | Store as text | Store as text | IPv4 or IPv6 address |
+| uuid | uuid                        | ::uuid | Store as char(36) | Store as text | Standard UUID format |
 
 
 ### Database Type Support Matrix

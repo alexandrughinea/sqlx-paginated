@@ -1,7 +1,6 @@
 use crate::paginated_query_as::internal::DEFAULT_EMPTY_VALUE;
-use crate::QueryDateTime;
+use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime};
 use sqlx::types::Uuid;
-use sqlx::Postgres;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 pub fn get_postgres_type_casting(value: &str) -> &'static str {
@@ -47,9 +46,11 @@ pub fn get_postgres_type_casting(value: &str) -> &'static str {
         }
 
         // Datetime/Date/Time
-        value if QueryDateTime::parse_str(value).is_ok() => QueryDateTime::parse_str(value)
-            .unwrap()
-            .to_sql_string::<Postgres>(),
+        // Dates and Times
+        value if NaiveDateTime::parse_from_str(value, "%Y-%m-%d %H:%M:%S").is_ok() => "::timestamp",
+        value if NaiveDate::parse_from_str(value, "%Y-%m-%d").is_ok() => "::date",
+        value if NaiveTime::parse_from_str(value, "%H:%M:%S").is_ok() => "::time",
+        value if DateTime::parse_from_rfc3339(value).is_ok() => "::timestamptz",
 
         // Numeric
         value if value.parse::<i16>().is_ok() => "::smallint", // 2-byte integer

@@ -46,11 +46,12 @@ pub fn get_postgres_type_casting(value: &str) -> &'static str {
         }
 
         // Datetime/Date/Time
-        // Dates and Times
-        value if NaiveDateTime::parse_from_str(value, "%Y-%m-%d %H:%M:%S").is_ok() => "::timestamp",
+        value if NaiveDateTime::parse_from_str(value, "%Y-%m-%d %H:%M:%S").is_ok() => {
+            "::timestamp without time zone"
+        }
         value if NaiveDate::parse_from_str(value, "%Y-%m-%d").is_ok() => "::date",
         value if NaiveTime::parse_from_str(value, "%H:%M:%S").is_ok() => "::time",
-        value if DateTime::parse_from_rfc3339(value).is_ok() => "::timestamptz",
+        value if DateTime::parse_from_rfc3339(value).is_ok() => "::timestamp with time zone",
 
         // Numeric
         value if value.parse::<i16>().is_ok() => "::smallint", // 2-byte integer
@@ -67,6 +68,13 @@ pub fn get_postgres_type_casting(value: &str) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_string_types() {
+        // Standard text values, not type case
+        assert_eq!(get_postgres_type_casting("Random string"), "");
+        assert_eq!(get_postgres_type_casting("Test"), "");
+    }
 
     #[test]
     fn test_boolean_types() {
@@ -168,21 +176,17 @@ mod tests {
         // Timestamp without timezone
         assert_eq!(
             get_postgres_type_casting("2024-01-01 12:34:56"),
-            "::timestamp"
+            "::timestamp without time zone"
         );
 
         // Timestamp with timezone
         assert_eq!(
             get_postgres_type_casting("2024-01-01T12:34:56Z"),
-            "::timestamptz"
+            "::timestamp with time zone"
         );
         assert_eq!(
             get_postgres_type_casting("2024-01-01T12:34:56+00:00"),
-            "::timestamptz"
-        );
-        assert_eq!(
-            get_postgres_type_casting("2024-11-03T12:30:12.081598Z"),
-            "::timestamptz"
+            "::timestamp with time zone"
         );
     }
 

@@ -2,12 +2,15 @@ use crate::paginated_query_as::internal::{quote_identifier, ColumnProtection, Qu
 use crate::QueryParams;
 use serde::Serialize;
 use sqlx::{Arguments, Database, Encode, Type};
-use std::marker::PhantomData;
-
 impl<'q, T, DB> QueryBuilder<'q, T, DB>
 where
     T: Default + Serialize,
     DB: Database,
+    DateTime<Utc>: Encode<'q, DB> + Type<DB>,
+    NaiveDateTime: Encode<'q, DB> + Type<DB>,
+    NaiveDate: Encode<'q, DB> + Type<DB>,
+    NaiveTime: Encode<'q, DB> + Type<DB>,
+
     String: for<'a> Encode<'a, DB> + Type<DB>,
 {
     /// Checks if a column exists in the list of valid columns for T struct.
@@ -423,6 +426,9 @@ where
         (self.conditions, self.arguments)
     }
 }
+use std::marker::PhantomData;
+
+use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, Utc};
 
 pub struct QueryBuilder<'q, T, DB: Database> {
     pub conditions: Vec<String>,

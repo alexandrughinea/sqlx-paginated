@@ -1,16 +1,24 @@
 use crate::paginated_query_as::internal::{quote_identifier, ColumnProtection, QueryDialect};
 use crate::QueryParams;
+use chrono::{DateTime, Utc};
 use serde::Serialize;
 use sqlx::{Arguments, Database, Encode, Type};
+use std::marker::PhantomData;
+
+pub struct QueryBuilder<'q, T, DB: Database> {
+    pub conditions: Vec<String>,
+    pub arguments: DB::Arguments<'q>,
+    pub(crate) valid_columns: Vec<String>,
+    pub(crate) protection: Option<ColumnProtection>,
+    pub(crate) protection_enabled: bool,
+    pub(crate) dialect: Box<dyn QueryDialect>,
+    pub(crate) _phantom: PhantomData<&'q T>,
+}
+
 impl<'q, T, DB> QueryBuilder<'q, T, DB>
 where
     T: Default + Serialize,
     DB: Database,
-    DateTime<Utc>: Encode<'q, DB> + Type<DB>,
-    NaiveDateTime: Encode<'q, DB> + Type<DB>,
-    NaiveDate: Encode<'q, DB> + Type<DB>,
-    NaiveTime: Encode<'q, DB> + Type<DB>,
-
     String: for<'a> Encode<'a, DB> + Type<DB>,
 {
     /// Checks if a column exists in the list of valid columns for T struct.
@@ -192,31 +200,34 @@ where
     /// use sqlx::Postgres;
     /// use serde::{Serialize};
     /// use chrono::{DateTime};
-    /// use sqlx_paginated::{QueryBuilder, QueryParamsBuilder, QueryParams, QueryDateTime};
+    /// use sqlx_paginated::{QueryBuilder, QueryParamsBuilder, QueryParams};
     ///
     /// #[derive(Serialize, Default)]
     /// struct UserExample {
     ///     name: String
     /// }
-    /// let date_before = QueryDateTime::TimestampTz(DateTime::parse_from_rfc3339("2024-12-31T23:59:59Z").unwrap().into());
+    ///
     /// let initial_params = QueryParamsBuilder::<UserExample>::new()
-    ///         .with_date_range(None, Some(date_before), Some("deleted_at"))
+    ///         .with_date_range(None, Some(DateTime::parse_from_rfc3339("2024-12-31T23:59:59Z").unwrap().into()), Some("deleted_at"))
     ///         .build();
     /// let query_builder = QueryBuilder::<UserExample, Postgres>::new()
     ///     .with_date_range(&initial_params)
     ///     .build();
     /// ```
-    pub fn with_date_range(mut self, params: &'q QueryParams<T>) -> Self {
+    pub fn with_date_range(mut self, params: &'q QueryParams<T>) -> Self
+    where
+        DateTime<Utc>: for<'a> Encode<'a, DB> + Type<DB>,
+    {
         if let Some(date_column) = &params.date_range.date_column {
             if self.is_column_safe(date_column) {
-                if let Some(after) = &params.date_range.date_after {
+                if let Some(after) = params.date_range.date_after {
                     let next_argument = self.arguments.len() + 1;
                     self.conditions
                         .push(format!("{} >= ${}", date_column, next_argument));
                     self.arguments.add(after).unwrap_or_default();
                 }
 
-                if let Some(before) = &params.date_range.date_before {
+                if let Some(before) = params.date_range.date_before {
                     let next_argument = self.arguments.len() + 1;
                     self.conditions
                         .push(format!("{} <= ${}", date_column, next_argument));
@@ -425,17 +436,4 @@ where
     pub fn build(self) -> (Vec<String>, DB::Arguments<'q>) {
         (self.conditions, self.arguments)
     }
-}
-use std::marker::PhantomData;
-
-use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, Utc};
-
-pub struct QueryBuilder<'q, T, DB: Database> {
-    pub conditions: Vec<String>,
-    pub arguments: DB::Arguments<'q>,
-    pub(crate) valid_columns: Vec<String>,
-    pub(crate) protection: Option<ColumnProtection>,
-    pub(crate) protection_enabled: bool,
-    pub(crate) dialect: Box<dyn QueryDialect>,
-    pub(crate) _phantom: PhantomData<&'q T>,
 }

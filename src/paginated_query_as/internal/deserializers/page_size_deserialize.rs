@@ -18,7 +18,6 @@ where
 
     value_with_fallbacks
         .parse::<i64>()
-        .map(|digit| digit.clamp(DEFAULT_MIN_PAGE_SIZE, DEFAULT_MAX_PAGE_SIZE))
         .or(Ok(DEFAULT_MIN_PAGE_SIZE))
 }
 

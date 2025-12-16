@@ -69,7 +69,7 @@ impl<'q, T: Default + Serialize> QueryParamsBuilder<'q, T> {
     pub fn with_pagination(mut self, page: i64, page_size: i64) -> Self {
         self.query.pagination = QueryPaginationParams {
             page: page.max(DEFAULT_PAGE),
-            page_size: page_size.clamp(DEFAULT_MIN_PAGE_SIZE, DEFAULT_MAX_PAGE_SIZE),
+            page_size: page_size,
         };
         self
     }

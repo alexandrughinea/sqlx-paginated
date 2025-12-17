@@ -15,9 +15,8 @@ where
     // Clean and normalize the search string
     let normalized_value = value_with_fallbacks
         .trim()
-        .chars()
-        .filter(|c| c.is_alphanumeric() || *c == ' ' || *c == '-')
-        .collect::<String>()
+        .replace('%', "\\%")
+        .replace('_', "\\_")
         .split_whitespace()
         .collect::<Vec<_>>()
         .join(DEFAULT_SEPARATOR)

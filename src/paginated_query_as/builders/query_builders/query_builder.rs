@@ -11,6 +11,7 @@ pub struct QueryBuilder<'q, T, DB: Database> {
     pub(crate) valid_columns: Vec<String>,
     pub(crate) protection: Option<ColumnProtection>,
     pub(crate) protection_enabled: bool,
+    pub(crate) column_validation_enabled: bool,
     pub(crate) dialect: Box<dyn QueryDialect>,
     pub(crate) _phantom: PhantomData<&'q T>,
 }
@@ -35,7 +36,11 @@ where
     }
 
     fn is_column_safe(&self, column: &str) -> bool {
-        let column_exists = self.has_column(column);
+        let column_exists = if self.column_validation_enabled { 
+            self.has_column(column) 
+        } else { 
+            true 
+        };
 
         if !self.protection_enabled {
             return column_exists;
@@ -403,6 +408,21 @@ where
     /// ```
     pub fn disable_protection(mut self) -> Self {
         self.protection_enabled = false;
+        self
+    }
+
+    pub fn enable_protection(mut self) -> Self {
+        self.protection_enabled = true;
+        self
+    }
+
+    pub fn disable_column_validation(mut self) -> Self {
+        self.column_validation_enabled = false;
+        self
+    }
+
+    pub fn enable_column_validation(mut self) -> Self {
+        self.column_validation_enabled = true;
         self
     }
 

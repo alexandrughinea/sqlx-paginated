@@ -25,6 +25,7 @@ where
             valid_columns: get_struct_field_names::<T>(),
             protection: Some(ColumnProtection::default()),
             protection_enabled: true,
+            column_validation_enabled: true,
             dialect: Box::new(PostgresDialect),
             _phantom: PhantomData,
         }

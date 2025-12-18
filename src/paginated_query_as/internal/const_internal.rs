@@ -1,6 +1,5 @@
 pub static DEFAULT_EMPTY_VALUE: &str = "";
 pub static DEFAULT_SEPARATOR: &str = " ";
-pub static DEFAULT_MAX_PAGE_SIZE: i64 = 50;
 pub static DEFAULT_MIN_PAGE_SIZE: i64 = 10;
 pub static DEFAULT_PAGE: i64 = 1;
 pub static DEFAULT_MAX_FIELD_LENGTH: i64 = 100;

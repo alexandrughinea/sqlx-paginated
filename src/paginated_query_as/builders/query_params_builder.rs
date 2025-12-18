@@ -1,6 +1,6 @@
 use crate::paginated_query_as::internal::{
     get_struct_field_names, QueryDateRangeParams, QueryPaginationParams, QuerySearchParams,
-    QuerySortParams, DEFAULT_DATE_RANGE_COLUMN_NAME, DEFAULT_MAX_PAGE_SIZE, DEFAULT_MIN_PAGE_SIZE,
+    QuerySortParams, DEFAULT_DATE_RANGE_COLUMN_NAME,
     DEFAULT_PAGE,
 };
 use crate::paginated_query_as::models::QuerySortDirection;

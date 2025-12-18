@@ -1,5 +1,5 @@
 use crate::paginated_query_as::internal::{
-    extract_digits_from_strings, DEFAULT_MAX_PAGE_SIZE, DEFAULT_MIN_PAGE_SIZE,
+    extract_digits_from_strings, DEFAULT_MIN_PAGE_SIZE,
 };
 use serde::{Deserialize, Deserializer};
 

@@ -1,8 +1,9 @@
-use crate::paginated_query_as::internal::{quote_identifier, ColumnProtection, QueryDialect};
+use crate::paginated_query_as::internal::{ColumnProtection, QueryDialect};
 use crate::QueryParams;
 use chrono::{DateTime, Utc};
 use serde::Serialize;
 use sqlx::{Arguments, Database, Encode, Type};
+use std::collections::HashMap;
 use std::marker::PhantomData;
 
 pub struct QueryBuilder<'q, T, DB: Database> {
@@ -88,12 +89,23 @@ where
     ///     .with_search(&initial_params)
     ///     .build();
     /// ```
-    pub fn with_search(mut self, params: &QueryParams<T>) -> Self {
+    pub fn with_search(self, params: &QueryParams<T>) -> Self {
+        self.with_search_map(params, |(_, _)| { None })
+    }
+
+    pub fn with_search_map(mut self, params: &QueryParams<T>, mapper: impl Fn((&String, &String)) -> Option<(String, Option<String>)>) -> Self {
         if let Some(search) = &params.search.search {
             if let Some(columns) = &params.search.search_columns {
+                let mapped_columns: HashMap<String, (String, Option<String>)> = columns
+                    .iter()
+                    .filter_map(|column| {
+                        mapper((column, search)).map(|mapped| (column.clone(), mapped))
+                    })
+                    .collect();
+
                 let valid_search_columns: Vec<&String> = columns
                     .iter()
-                    .filter(|column| self.is_column_safe(column))
+                    .filter(|column| self.is_column_safe(column) || mapped_columns.contains_key(*column))
                     .collect();
 
                 if !valid_search_columns.is_empty() && !search.trim().is_empty() {
@@ -103,8 +115,16 @@ where
                     let search_conditions: Vec<String> = valid_search_columns
                         .iter()
                         .map(|column| {
-                            let table_column = self.dialect.quote_identifier(column);
-                            let placeholder = self.dialect.placeholder(next_argument);
+                            let mapped_column = mapped_columns.get(*column);
+
+                            let table_column: String = mapped_column
+                                .map(|(tc, _)| tc.clone())
+                                .unwrap_or_else(|| self.dialect.quote_identifier(column));
+
+                            let placeholder: String = mapped_column
+                                .and_then(|(_, p)| p.clone())
+                                .unwrap_or_else(|| self.dialect.placeholder(next_argument));
+
                             format!("LOWER({}) LIKE LOWER({})", table_column, placeholder)
                         })
                         .collect();

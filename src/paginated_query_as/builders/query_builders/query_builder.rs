@@ -291,7 +291,7 @@ where
             let next_argument = self.arguments.len() + 1;
             self.conditions.push(format!(
                 "{} {} ${}",
-                quote_identifier(column),
+                column,
                 condition.into(),
                 next_argument
             ));

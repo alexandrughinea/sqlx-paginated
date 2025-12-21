@@ -62,10 +62,10 @@ mod tests {
             Some("test search".to_string())
         );
 
-        // Sanitization cases
+        // Escaping cases - % and _ are escaped for SQL LIKE safety
         assert_eq!(
             deserialize_test(r#""test@#$%^&* search""#, search_deserialize).unwrap(),
-            Some("test search".to_string())
+            Some("test@#$\\%^&* search".to_string())
         );
 
         // Length limit cases

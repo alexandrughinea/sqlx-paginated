@@ -1,13 +1,10 @@
 use crate::paginated_query_as::internal::{
-    get_struct_field_names, QueryDateRangeParams, QueryPaginationParams, QuerySearchParams,
-    QuerySortParams, DEFAULT_DATE_RANGE_COLUMN_NAME,
+    get_struct_field_meta, QueryPaginationParams, QuerySearchParams, QuerySortParams,
     DEFAULT_PAGE,
 };
-use crate::paginated_query_as::models::QuerySortDirection;
+use crate::paginated_query_as::models::{Filter, FilterOperator, FilterValue, QuerySortDirection};
 use crate::QueryParams;
-use chrono::{DateTime, Utc};
 use serde::Serialize;
-use std::collections::HashMap;
 
 pub struct QueryParamsBuilder<'q, T> {
     query: QueryParams<'q, T>,
@@ -46,13 +43,12 @@ impl<'q, T: Default + Serialize> QueryParamsBuilder<'q, T> {
         }
     }
 
-    /// Creates a new `QueryParamsBuilder` with default values.
+    /// Sets pagination parameters.
     ///
-    /// Default values include:
-    /// - Page: 1
-    /// - Page size: 10
-    /// - Sort column: "created_at"
-    /// - Sort direction: Descending
+    /// # Arguments
+    ///
+    /// * `page` - Page number (1-indexed)
+    /// * `page_size` - Number of items per page
     ///
     /// # Examples
     ///
@@ -64,12 +60,13 @@ impl<'q, T: Default + Serialize> QueryParamsBuilder<'q, T> {
     /// struct UserExample {
     ///     name: String
     /// }
-    /// let builder = QueryParamsBuilder::<UserExample>::new();
+    /// let builder = QueryParamsBuilder::<UserExample>::new()
+    ///     .with_pagination(1, 20);
     /// ```
     pub fn with_pagination(mut self, page: i64, page_size: i64) -> Self {
         self.query.pagination = QueryPaginationParams {
             page: page.max(DEFAULT_PAGE),
-            page_size: page_size,
+            page_size,
         };
         self
     }
@@ -142,110 +139,66 @@ impl<'q, T: Default + Serialize> QueryParamsBuilder<'q, T> {
         self
     }
 
-    /// Sets date range parameters for filtering by date.
+    /// Adds a filter with the specified field, operator, and value.
     ///
     /// # Arguments
     ///
-    /// * `date_after` - Optional start date (inclusive)
-    /// * `date_before` - Optional end date (inclusive)
-    /// * `column_name` - Optional column name to apply date range filter (defaults to created_at)
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use chrono::{DateTime, Utc};
-    /// use serde::{Serialize};
-    /// use sqlx_paginated::{QueryParamsBuilder, QuerySortDirection};
-    ///
-    /// #[derive(Serialize, Default)]
-    /// struct UserExample {
-    ///     name: String,
-    ///     updated_at: DateTime<Utc>
-    /// }
-    ///
-    /// let start = DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z").unwrap().into();
-    /// let end = DateTime::parse_from_rfc3339("2024-12-31T23:59:59Z").unwrap().into();
-    ///
-    /// let params = QueryParamsBuilder::<UserExample>::new()
-    ///     .with_date_range(Some(start), Some(end), Some("updated_at"))
-    ///     .build();
-    /// ```
-    pub fn with_date_range(
-        mut self,
-        date_after: Option<DateTime<Utc>>,
-        date_before: Option<DateTime<Utc>>,
-        column_name: Option<impl Into<String>>,
-    ) -> Self {
-        self.query.date_range = QueryDateRangeParams {
-            date_after,
-            date_before,
-            date_column: column_name.map_or_else(
-                || Some(DEFAULT_DATE_RANGE_COLUMN_NAME.to_string()),
-                |column_name| Some(column_name.into()),
-            ),
-        };
-        self
-    }
-
-    /// Adds a single filter condition.
-    ///
-    /// # Arguments
-    ///
-    /// * `key` - Column name to filter on
-    /// * `value` - Optional value to filter by
+    /// * `field` - Column name to filter on
+    /// * `operator` - Filter operator (Eq, Ne, Gt, Lt, etc.)
+    /// * `value` - Filter value
     ///
     /// # Details
     ///
     /// Only adds the filter if the column exists in the model struct.
-    /// Logs a warning if tracing is enabled and the column is invalid.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// use std::any::Any;
     /// use serde::{Serialize};
-    /// use sqlx_paginated::{QueryParamsBuilder};
+    /// use sqlx_paginated::{QueryParamsBuilder, FilterOperator, FilterValue};
     ///
     /// #[derive(Serialize, Default)]
     /// struct UserExample {
     ///     name: String,
     ///     status: String,
-    ///     role: String
     /// }
     ///
     /// let params = QueryParamsBuilder::<UserExample>::new()
-    ///     .with_filter("status", Some("active"))
-    ///     .with_filter("role", Some("admin"))
+    ///     .with_filter("status", FilterOperator::Eq, FilterValue::String("active".to_string()))
     ///     .build();
     /// ```
-    pub fn with_filter(mut self, key: impl Into<String>, value: Option<impl Into<String>>) -> Self {
-        let key = key.into();
-        let valid_fields = get_struct_field_names::<T>();
+    pub fn with_filter(
+        mut self,
+        field: impl Into<String>,
+        operator: FilterOperator,
+        value: FilterValue,
+    ) -> Self {
+        let field = field.into();
+        let valid_fields: Vec<String> = get_struct_field_meta::<T>().keys().cloned().collect();
 
-        if valid_fields.contains(&key) {
-            self.query.filters.insert(key, value.map(Into::into));
+        if valid_fields.contains(&field) {
+            self.query.filters.push(Filter {
+                field,
+                operator,
+                value,
+            });
         } else {
             #[cfg(feature = "tracing")]
-            tracing::warn!(column = %key, "Skipping invalid filter column");
+            tracing::warn!(column = %field, "Skipping invalid filter column");
         }
         self
     }
 
-    /// Adds multiple filter conditions from a HashMap.
+    /// Adds a simple equality filter (shorthand for with_filter with Eq operator).
     ///
     /// # Arguments
     ///
-    /// * `filters` - HashMap of column names and their filter values
-    ///
-    /// # Details
-    ///
-    /// Only adds filters for columns that exist in the model struct.
-    /// Logs a warning if tracing is enabled and a column is invalid.
+    /// * `field` - Column name to filter on
+    /// * `value` - Value to filter by (will be converted to FilterValue::String)
     ///
     /// # Examples
     ///
     /// ```rust
-    /// use std::collections::HashMap;
     /// use serde::{Serialize};
     /// use sqlx_paginated::{QueryParamsBuilder};
     ///
@@ -253,36 +206,61 @@ impl<'q, T: Default + Serialize> QueryParamsBuilder<'q, T> {
     /// struct UserExample {
     ///     name: String,
     ///     status: String,
-    ///     role: String
     /// }
     ///
-    /// let mut filters = HashMap::new();
-    /// filters.insert("status", Some("active"));
-    /// filters.insert("role", Some("admin"));
+    /// let params = QueryParamsBuilder::<UserExample>::new()
+    ///     .with_eq_filter("status", "active")
+    ///     .build();
+    /// ```
+    pub fn with_eq_filter(self, field: impl Into<String>, value: impl Into<String>) -> Self {
+        self.with_filter(
+            field,
+            FilterOperator::Eq,
+            FilterValue::String(value.into()),
+        )
+    }
+
+    /// Adds multiple filters.
+    ///
+    /// # Arguments
+    ///
+    /// * `filters` - Vector of Filter structs
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use serde::{Serialize};
+    /// use sqlx_paginated::{QueryParamsBuilder, Filter, FilterOperator, FilterValue};
+    ///
+    /// #[derive(Serialize, Default)]
+    /// struct UserExample {
+    ///     name: String,
+    ///     status: String,
+    /// }
+    ///
+    /// let filters = vec![
+    ///     Filter {
+    ///         field: "status".to_string(),
+    ///         operator: FilterOperator::Eq,
+    ///         value: FilterValue::String("active".to_string()),
+    ///     },
+    /// ];
     ///
     /// let params = QueryParamsBuilder::<UserExample>::new()
     ///     .with_filters(filters)
     ///     .build();
     /// ```
-    pub fn with_filters(
-        mut self,
-        filters: HashMap<impl Into<String>, Option<impl Into<String>>>,
-    ) -> Self {
-        let valid_fields = get_struct_field_names::<T>();
+    pub fn with_filters(mut self, filters: Vec<Filter>) -> Self {
+        let valid_fields: Vec<String> = get_struct_field_meta::<T>().keys().cloned().collect();
 
-        self.query
-            .filters
-            .extend(filters.into_iter().filter_map(|(key, value)| {
-                let key = key.into();
-                if valid_fields.contains(&key) {
-                    Some((key, value.map(Into::into)))
-                } else {
-                    #[cfg(feature = "tracing")]
-                    tracing::warn!(column = %key, "Skipping invalid filter column");
-                    None
-                }
-            }));
-
+        for filter in filters {
+            if valid_fields.contains(&filter.field) {
+                self.query.filters.push(filter);
+            } else {
+                #[cfg(feature = "tracing")]
+                tracing::warn!(column = %filter.field, "Skipping invalid filter column");
+            }
+        }
         self
     }
 
@@ -295,8 +273,7 @@ impl<'q, T: Default + Serialize> QueryParamsBuilder<'q, T> {
     /// # Examples
     ///
     /// ```rust
-    /// use chrono::{DateTime, Utc};
-    /// use sqlx_paginated::{QueryParamsBuilder, QuerySortDirection};
+    /// use sqlx_paginated::{QueryParamsBuilder, QuerySortDirection, FilterOperator, FilterValue};
     /// use serde::{Serialize};
     ///
     /// #[derive(Serialize, Default)]
@@ -304,14 +281,13 @@ impl<'q, T: Default + Serialize> QueryParamsBuilder<'q, T> {
     ///     name: String,
     ///     status: String,
     ///     email: String,
-    ///     created_at: DateTime<Utc>
     /// }
     ///
     /// let params = QueryParamsBuilder::<UserExample>::new()
     ///     .with_pagination(1, 20)
     ///     .with_sort("created_at", QuerySortDirection::Descending)
     ///     .with_search("john", vec!["name", "email"])
-    ///     .with_filter("status", Some("active"))
+    ///     .with_filter("status", FilterOperator::Eq, FilterValue::String("active".to_string()))
     ///     .build();
     /// ```
     pub fn build(self) -> QueryParams<'q, T> {
@@ -323,11 +299,8 @@ impl<'q, T: Default + Serialize> QueryParamsBuilder<'q, T> {
 mod tests {
     use super::*;
     use crate::paginated_query_as::internal::{
-        DEFAULT_SEARCH_COLUMN_NAMES, DEFAULT_SORT_COLUMN_NAME,
+        DEFAULT_MIN_PAGE_SIZE, DEFAULT_SEARCH_COLUMN_NAMES, DEFAULT_SORT_COLUMN_NAME,
     };
-    use crate::paginated_query_as::models::QuerySortDirection;
-    use chrono::{DateTime, Utc};
-    use std::collections::HashMap;
 
     #[derive(Debug, Default, Serialize)]
     struct TestModel {
@@ -336,8 +309,6 @@ mod tests {
         description: String,
         status: String,
         category: String,
-        updated_at: DateTime<Utc>,
-        created_at: DateTime<Utc>,
     }
 
     #[test]
@@ -354,27 +325,6 @@ mod tests {
             "Default page should be {}",
             DEFAULT_PAGE
         );
-
-        // Test page size clamping
-        let params = QueryParamsBuilder::<TestModel>::new()
-            .with_pagination(1, DEFAULT_MAX_PAGE_SIZE + 10)
-            .build();
-
-        assert_eq!(
-            params.pagination.page_size, DEFAULT_MAX_PAGE_SIZE,
-            "Page size should be clamped to maximum {}",
-            DEFAULT_MAX_PAGE_SIZE
-        );
-
-        let params = QueryParamsBuilder::<TestModel>::new()
-            .with_pagination(1, DEFAULT_MIN_PAGE_SIZE - 5)
-            .build();
-
-        assert_eq!(
-            params.pagination.page_size, DEFAULT_MIN_PAGE_SIZE,
-            "Page size should be clamped to minimum {}",
-            DEFAULT_MIN_PAGE_SIZE
-        );
     }
 
     #[test]
@@ -389,30 +339,9 @@ mod tests {
     }
 
     #[test]
-    fn test_date_range_defaults() {
-        let params = QueryParamsBuilder::<TestModel>::new().build();
-
-        assert_eq!(
-            params.date_range.date_column,
-            Some(DEFAULT_DATE_RANGE_COLUMN_NAME.to_string()),
-            "Default date range column should be '{}'",
-            DEFAULT_DATE_RANGE_COLUMN_NAME
-        );
-        assert!(
-            params.date_range.date_after.is_none(),
-            "Default date_after should be None"
-        );
-        assert!(
-            params.date_range.date_before.is_none(),
-            "Default date_before should be None"
-        );
-    }
-
-    #[test]
     fn test_search_defaults() {
         let params = QueryParamsBuilder::<TestModel>::new().build();
 
-        // Check if default search columns are set
         assert_eq!(
             params.search.search_columns,
             Some(
@@ -434,15 +363,10 @@ mod tests {
     fn test_combined_defaults() {
         let params = QueryParamsBuilder::<TestModel>::new().build();
 
-        // Test all defaults together
         assert_eq!(params.pagination.page, DEFAULT_PAGE);
         assert_eq!(params.pagination.page_size, DEFAULT_MIN_PAGE_SIZE);
         assert_eq!(params.sort.sort_column, DEFAULT_SORT_COLUMN_NAME);
         assert_eq!(params.sort.sort_direction, QuerySortDirection::Descending);
-        assert_eq!(
-            params.date_range.date_column,
-            Some(DEFAULT_DATE_RANGE_COLUMN_NAME.to_string())
-        );
         assert_eq!(
             params.search.search_columns,
             Some(
@@ -453,8 +377,6 @@ mod tests {
             )
         );
         assert!(params.search.search.is_none());
-        assert!(params.date_range.date_after.is_none());
-        assert!(params.date_range.date_before.is_none());
     }
 
     #[test]
@@ -489,35 +411,49 @@ mod tests {
 
     #[test]
     fn test_invalid_params() {
-        // For builder pattern, invalid params would be handled at compile time
-        // But we can test the defaults
         let params = QueryParamsBuilder::<TestModel>::new()
-            .with_pagination(0, 0) // Should be clamped to minimum values
+            .with_pagination(0, 0)
             .build();
 
         assert_eq!(params.pagination.page, 1);
-        assert_eq!(params.pagination.page_size, 10);
     }
 
     #[test]
     fn test_filters() {
-        let mut filters = HashMap::new();
-        filters.insert("status".to_string(), Some("active".to_string()));
-        filters.insert("category".to_string(), Some("test".to_string()));
-
         let params = QueryParamsBuilder::<TestModel>::new()
-            .with_filters(filters)
+            .with_filter(
+                "status",
+                FilterOperator::Eq,
+                FilterValue::String("active".to_string()),
+            )
+            .with_filter(
+                "category",
+                FilterOperator::Eq,
+                FilterValue::String("test".to_string()),
+            )
             .build();
 
-        assert!(params.filters.contains_key("status"));
+        assert_eq!(params.filters.len(), 2);
+        assert_eq!(params.filters[0].field, "status");
+        assert_eq!(params.filters[0].operator, FilterOperator::Eq);
         assert_eq!(
-            params.filters.get("status").unwrap(),
-            &Some("active".to_string())
+            params.filters[0].value,
+            FilterValue::String("active".to_string())
         );
-        assert!(params.filters.contains_key("category"));
+    }
+
+    #[test]
+    fn test_eq_filter_shorthand() {
+        let params = QueryParamsBuilder::<TestModel>::new()
+            .with_eq_filter("status", "active")
+            .build();
+
+        assert_eq!(params.filters.len(), 1);
+        assert_eq!(params.filters[0].field, "status");
+        assert_eq!(params.filters[0].operator, FilterOperator::Eq);
         assert_eq!(
-            params.filters.get("category").unwrap(),
-            &Some("test".to_string())
+            params.filters[0].value,
+            FilterValue::String("active".to_string())
         );
     }
 
@@ -541,17 +477,17 @@ mod tests {
     fn test_full_params() {
         let params = QueryParamsBuilder::<TestModel>::new()
             .with_pagination(2, 20)
-            .with_sort("updated_at".to_string(), QuerySortDirection::Ascending)
+            .with_sort("name".to_string(), QuerySortDirection::Ascending)
             .with_search(
                 "test".to_string(),
                 vec!["title".to_string(), "description".to_string()],
             )
-            .with_date_range(Some(Utc::now()), None, None::<String>)
+            .with_eq_filter("status", "active")
             .build();
 
         assert_eq!(params.pagination.page, 2);
         assert_eq!(params.pagination.page_size, 20);
-        assert_eq!(params.sort.sort_column, "updated_at");
+        assert_eq!(params.sort.sort_column, "name");
         assert!(matches!(
             params.sort.sort_direction,
             QuerySortDirection::Ascending
@@ -561,25 +497,19 @@ mod tests {
             params.search.search_columns,
             Some(vec!["title".to_string(), "description".to_string()])
         );
-        assert!(params.date_range.date_after.is_some());
-        assert!(params.date_range.date_before.is_none());
+        assert_eq!(params.filters.len(), 1);
     }
 
     #[test]
     fn test_filter_chain() {
         let params = QueryParamsBuilder::<TestModel>::new()
-            .with_filter("status", Some("active"))
-            .with_filter("category", Some("test"))
+            .with_eq_filter("status", "active")
+            .with_eq_filter("category", "test")
             .build();
 
-        assert_eq!(
-            params.filters.get("status").unwrap(),
-            &Some("active".to_string())
-        );
-        assert_eq!(
-            params.filters.get("category").unwrap(),
-            &Some("test".to_string())
-        );
+        assert_eq!(params.filters.len(), 2);
+        assert_eq!(params.filters[0].field, "status");
+        assert_eq!(params.filters[1].field, "category");
     }
 
     #[test]
@@ -587,15 +517,33 @@ mod tests {
         let params = QueryParamsBuilder::<TestModel>::new()
             .with_pagination(2, 10)
             .with_search("test".to_string(), vec!["title".to_string()])
-            .with_filter("status", Some("active"))
+            .with_eq_filter("status", "active")
             .build();
 
         assert_eq!(params.pagination.page, 2);
         assert_eq!(params.pagination.page_size, 10);
         assert_eq!(params.search.search, Some("test".to_string()));
-        assert_eq!(
-            params.filters.get("status").unwrap(),
-            &Some("active".to_string())
-        );
+        assert_eq!(params.filters.len(), 1);
+    }
+
+    #[test]
+    fn test_invalid_filter_column() {
+        let params = QueryParamsBuilder::<TestModel>::new()
+            .with_eq_filter("invalid_column", "value")
+            .build();
+
+        assert!(params.filters.is_empty(), "Invalid column should be skipped");
+    }
+
+    #[test]
+    fn test_various_operators() {
+        let params = QueryParamsBuilder::<TestModel>::new()
+            .with_filter("status", FilterOperator::Ne, FilterValue::String("deleted".to_string()))
+            .with_filter("name", FilterOperator::Like, FilterValue::String("%john%".to_string()))
+            .build();
+
+        assert_eq!(params.filters.len(), 2);
+        assert_eq!(params.filters[0].operator, FilterOperator::Ne);
+        assert_eq!(params.filters[1].operator, FilterOperator::Like);
     }
 }

@@ -1,9 +1,9 @@
+use crate::paginated_query_as::builders::QueryBuildResult;
 use crate::paginated_query_as::examples::postgres_examples::build_query_with_safe_defaults;
 use crate::paginated_query_as::internal::quote_identifier;
 use crate::paginated_query_as::models::QuerySortDirection;
 use crate::{FlatQueryParams, PaginatedResponse, QueryParams};
 use serde::Serialize;
-use sqlx::postgres::PgArguments;
 use sqlx::{postgres::Postgres, query::QueryAs, Execute, FromRow, IntoArguments, Pool};
 
 pub struct PaginatedQueryBuilder<'q, T, A>
@@ -13,7 +13,7 @@ where
     query: QueryAs<'q, Postgres, T, A>,
     params: QueryParams<'q, T>,
     totals_count_enabled: bool,
-    build_query_fn: fn(&QueryParams<T>) -> (Vec<String>, PgArguments),
+    build_query_fn: fn(&QueryParams<T>) -> QueryBuildResult<'static, Postgres>,
 }
 
 /// A builder for constructing and executing paginated queries.
@@ -35,7 +35,7 @@ where
 /// (Attention: Only `Pool<Postgres>` is supported at the moment)
 impl<'q, T, A> PaginatedQueryBuilder<'q, T, A>
 where
-    T: for<'r> FromRow<'r, <Postgres as sqlx::Database>::Row> + Send + Unpin + Serialize + Default,
+    T: for<'r> FromRow<'r, <Postgres as sqlx::Database>::Row> + Send + Unpin + Serialize + Default + 'static,
     A: 'q + IntoArguments<'q, Postgres> + Send,
 {
     /// Creates a new `PaginatedQueryBuilder` with default settings.
@@ -69,13 +69,13 @@ where
             query,
             params: FlatQueryParams::default().into(),
             totals_count_enabled: true,
-            build_query_fn: |params| build_query_with_safe_defaults::<T, Postgres>(params),
+            build_query_fn: |params| build_query_with_safe_defaults::<T>(params),
         }
     }
 
     pub fn with_query_builder(
         self,
-        build_query_fn: fn(&QueryParams<T>) -> (Vec<String>, PgArguments),
+        build_query_fn: fn(&QueryParams<T>) -> QueryBuildResult<'static, Postgres>,
     ) -> Self {
         Self {
             build_query_fn,
@@ -123,18 +123,19 @@ where
         pool: &Pool<Postgres>,
     ) -> Result<PaginatedResponse<T>, sqlx::Error> {
         let base_sql = self.build_base_query();
-        let (conditions, main_arguments) = (self.build_query_fn)(&self.params);
-        let where_clause = self.build_where_clause(&conditions);
+        let main_result = (self.build_query_fn)(&self.params);
+        let join_clause = self.build_join_clause(&main_result.joins);
+        let where_clause = self.build_where_clause(&main_result.conditions);
 
         let (total, total_pages, pagination) = if self.totals_count_enabled {
-            let (_, count_arguments) = (self.build_query_fn)(&self.params);
+            let count_result = (self.build_query_fn)(&self.params);
             let pagination_arguments = self.params.pagination.clone();
 
             let count_sql = format!(
-                "{} SELECT COUNT(*) FROM base_query{}",
-                base_sql, where_clause
+                "{} SELECT COUNT(*) FROM base_query{}{}",
+                base_sql, join_clause, where_clause
             );
-            let count: i64 = sqlx::query_scalar_with(&count_sql, count_arguments)
+            let count: i64 = sqlx::query_scalar_with(&count_sql, count_result.arguments)
                 .fetch_one(pool)
                 .await?;
 
@@ -152,12 +153,15 @@ where
             (None, None, None)
         };
 
-        let mut main_sql = format!("{} SELECT * FROM base_query{}", base_sql, where_clause);
+        let mut main_sql = format!(
+            "{} SELECT * FROM base_query{}{}",
+            base_sql, join_clause, where_clause
+        );
 
         main_sql.push_str(&self.build_order_clause());
         main_sql.push_str(&self.build_limit_offset_clause());
 
-        let records = sqlx::query_as_with::<Postgres, T, _>(&main_sql, main_arguments)
+        let records = sqlx::query_as_with::<Postgres, T, _>(&main_sql, main_result.arguments)
             .fetch_all(pool)
             .await?;
 
@@ -176,6 +180,23 @@ where
     /// Returns the SQL string for the base query wrapped in a CTE
     fn build_base_query(&self) -> String {
         format!("WITH base_query AS ({})", self.query.sql())
+    }
+
+    /// Builds the JOIN clause from the provided joins.
+    ///
+    /// # Arguments
+    ///
+    /// * `joins` - Vector of JOIN clause strings
+    ///
+    /// # Returns
+    ///
+    /// Returns the formatted JOIN clause or empty string if no joins
+    fn build_join_clause(&self, joins: &[String]) -> String {
+        if joins.is_empty() {
+            String::new()
+        } else {
+            format!(" {}", joins.join(" "))
+        }
     }
 
     /// Builds the WHERE clause from the provided conditions.
@@ -199,13 +220,23 @@ where
     ///
     /// # Returns
     ///
-    /// Returns the formatted ORDER BY clause with proper column quoting
+    /// Returns the formatted ORDER BY clause with proper column quoting.
+    /// If the column doesn't contain a '.', it's prefixed with "base_query." to avoid
+    /// ambiguity when JOINs are present.
     fn build_order_clause(&self) -> String {
         let order = match self.params.sort.sort_direction {
             QuerySortDirection::Ascending => "ASC",
             QuerySortDirection::Descending => "DESC",
         };
-        let column_name = quote_identifier(&self.params.sort.sort_column);
+        
+        let sort_column = &self.params.sort.sort_column;
+        let column_name = if sort_column.contains('.') {
+            // Already qualified (e.g., "table.column" or "base_query.column")
+            quote_identifier(sort_column)
+        } else {
+            // Prefix with base_query to avoid ambiguity with JOINed tables
+            format!("\"base_query\".{}", quote_identifier(sort_column))
+        };
 
         format!(" ORDER BY {} {}", column_name, order)
     }

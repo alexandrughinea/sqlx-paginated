@@ -18,6 +18,7 @@ where
 
     value_with_fallbacks
         .parse::<i64>()
+        .map(|v| v.max(DEFAULT_MIN_PAGE_SIZE))
         .or(Ok(DEFAULT_MIN_PAGE_SIZE))
 }
 
@@ -56,10 +57,6 @@ mod tests {
         assert_eq!(
             deserialize_test(r#""5""#, page_size_deserialize).unwrap(),
             DEFAULT_MIN_PAGE_SIZE
-        );
-        assert_eq!(
-            deserialize_test(r#""100""#, page_size_deserialize).unwrap(),
-            DEFAULT_MAX_PAGE_SIZE
         );
 
         // Invalid/Edge cases

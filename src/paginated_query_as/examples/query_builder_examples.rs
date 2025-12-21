@@ -1,40 +1,38 @@
+use crate::paginated_query_as::QueryBuildResult;
 use crate::{QueryBuilder, QueryParams};
 use serde::Serialize;
 
 #[cfg(feature = "postgres")]
 pub mod postgres_examples {
     use super::*;
-    use sqlx::postgres::PgArguments;
-    use sqlx::{Database, Postgres};
+    use sqlx::Postgres;
 
     #[allow(dead_code)]
-    pub fn build_query_with_disabled_protection<'q, T, DB>(
+    pub fn build_query_with_disabled_protection<T>(
         params: &QueryParams<T>,
-    ) -> (Vec<String>, DB::Arguments<'q>)
+    ) -> QueryBuildResult<'static, Postgres>
     where
-        T: Default + Serialize,
-        DB: Database<Arguments<'q> = PgArguments>,
+        T: Default + Serialize + 'static,
     {
         QueryBuilder::<T, Postgres>::new()
+            .with_table_prefix("base_query")
             .with_search(params)
             .with_filters(params)
-            .with_date_range(params)
             .disable_protection()
             .build()
     }
 
     #[allow(dead_code)]
-    pub fn build_query_with_safe_defaults<'q, T, DB>(
+    pub fn build_query_with_safe_defaults<T>(
         params: &QueryParams<T>,
-    ) -> (Vec<String>, DB::Arguments<'q>)
+    ) -> QueryBuildResult<'static, Postgres>
     where
-        T: Default + Serialize,
-        DB: Database<Arguments<'q> = PgArguments>,
+        T: Default + Serialize + 'static,
     {
         QueryBuilder::<T, Postgres>::new()
+            .with_table_prefix("base_query")
             .with_search(params)
             .with_filters(params)
-            .with_date_range(params)
             .build()
     }
 
@@ -42,7 +40,6 @@ pub mod postgres_examples {
     mod test {
         use super::*;
         use crate::QueryParamsBuilder;
-        use chrono::{DateTime, Utc};
 
         #[derive(Debug, Default, Serialize)]
         struct TestModel {
@@ -51,8 +48,6 @@ pub mod postgres_examples {
             description: String,
             status: String,
             category: String,
-            updated_at: DateTime<Utc>,
-            created_at: DateTime<Utc>,
         }
 
         #[test]
@@ -61,11 +56,11 @@ pub mod postgres_examples {
                 .with_search("XXX", vec!["description"])
                 .build();
 
-            let (conditions, _) = build_query_with_safe_defaults::<TestModel, Postgres>(&params);
+            let result = build_query_with_safe_defaults::<TestModel>(&params);
 
-            assert!(!conditions.is_empty());
-            assert!(conditions.iter().any(|c| c.contains("LOWER")));
-            assert!(conditions.iter().any(|c| c.contains("LIKE LOWER")));
+            assert!(!result.conditions.is_empty());
+            assert!(result.conditions.iter().any(|c| c.contains("LOWER")));
+            assert!(result.conditions.iter().any(|c| c.contains("LIKE LOWER")));
         }
 
         #[test]
@@ -74,8 +69,8 @@ pub mod postgres_examples {
                 .with_search("   ", vec!["name"])
                 .build();
 
-            let (conditions, _) = build_query_with_safe_defaults::<TestModel, Postgres>(&params);
-            assert!(!conditions.iter().any(|c| c.contains("LIKE")));
+            let result = build_query_with_safe_defaults::<TestModel>(&params);
+            assert!(!result.conditions.iter().any(|c| c.contains("LIKE")));
         }
     }
 }
@@ -83,21 +78,18 @@ pub mod postgres_examples {
 #[cfg(feature = "sqlite")]
 pub mod sqlite_examples {
     use super::*;
-    use sqlx::sqlite::SqliteArguments;
-    use sqlx::{Database, Sqlite};
+    use sqlx::Sqlite;
 
     #[allow(dead_code)]
-    pub fn builder_new_query_with_disabled_protection_for_sqlite<'q, T, DB>(
+    pub fn builder_new_query_with_disabled_protection_for_sqlite<'q, T>(
         params: &'q QueryParams<T>,
-    ) -> (Vec<String>, DB::Arguments<'q>)
+    ) -> QueryBuildResult<'q, Sqlite>
     where
         T: Default + Serialize,
-        DB: Database<Arguments<'q> = SqliteArguments<'q>>,
     {
         QueryBuilder::<'q, T, Sqlite>::new()
             .with_search(params)
             .with_filters(params)
-            .with_date_range(params)
             .disable_protection()
             .build()
     }
@@ -106,7 +98,6 @@ pub mod sqlite_examples {
     mod test {
         use super::*;
         use crate::QueryParamsBuilder;
-        use chrono::{DateTime, Utc};
 
         #[derive(Debug, Default, Serialize)]
         struct TestModel {
@@ -115,8 +106,6 @@ pub mod sqlite_examples {
             description: String,
             status: String,
             category: String,
-            updated_at: DateTime<Utc>,
-            created_at: DateTime<Utc>,
         }
 
         #[test]
@@ -125,9 +114,9 @@ pub mod sqlite_examples {
                 .with_search("   ", vec!["name"])
                 .build();
 
-            let (conditions, _) =
-                builder_new_query_with_disabled_protection_for_sqlite::<TestModel, Sqlite>(&params);
-            assert!(!conditions.iter().any(|c| c.contains("LIKE")));
+            let result =
+                builder_new_query_with_disabled_protection_for_sqlite::<TestModel>(&params);
+            assert!(!result.conditions.iter().any(|c| c.contains("LIKE")));
         }
     }
 }

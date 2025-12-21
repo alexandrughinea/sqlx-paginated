@@ -1,11 +1,10 @@
 use crate::paginated_query_as::internal::{
-    default_date_range_column, default_page, default_page_size, default_search_columns,
-    default_sort_column, default_sort_direction, page_deserialize, page_size_deserialize,
-    search_columns_deserialize, search_deserialize,
+    default_page, default_page_size, default_search_columns, default_sort_column,
+    default_sort_direction, page_deserialize, page_size_deserialize, search_columns_deserialize,
+    search_deserialize,
 };
 
 use crate::QuerySortDirection;
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -68,21 +67,73 @@ impl Default for QuerySearchParams {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all = "snake_case")]
-pub struct QueryDateRangeParams {
-    pub date_after: Option<DateTime<Utc>>,
-    pub date_before: Option<DateTime<Utc>>,
-    #[serde(default = "default_date_range_column")]
-    pub date_column: Option<String>,
+
+use crate::paginated_query_as::internal::internal_utils::FieldType;
+
+/// Builder for configuring a computed property within the closure.
+///
+/// Used with `QueryBuilder::with_computed_property()` to define virtual columns
+/// that map to SQL expressions, optionally with required JOIN clauses.
+#[derive(Debug, Clone)]
+pub struct ComputedPropertyBuilder {
+    pub(crate) joins: Vec<String>,
+    pub(crate) field_type: FieldType,
 }
 
-impl Default for QueryDateRangeParams {
+impl Default for ComputedPropertyBuilder {
     fn default() -> Self {
         Self {
-            date_after: None,
-            date_before: None,
-            date_column: default_date_range_column(),
+            joins: Vec::new(),
+            field_type: FieldType::String,
         }
     }
+}
+
+impl ComputedPropertyBuilder {
+    /// Creates a new ComputedPropertyBuilder with default values.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Add a JOIN clause required for this computed property.
+    ///
+    /// Multiple joins can be added by calling this method multiple times.
+    /// Joins are only included in the final query if the computed property
+    /// is actually used in search or filter operations.
+    ///
+    /// # Example
+    /// ```rust,ignore
+    /// // Used within QueryBuilder::with_computed_property closure:
+    /// // IMPORTANT: When using with PaginatedQueryBuilder, reference "base_query" not the original table
+    /// builder.with_computed_property("counterparty_name", |cp| {
+    ///     cp.with_join("LEFT JOIN counterparty ON counterparty.id = base_query.counterparty_id");
+    ///     "counterparty.legal_name"
+    /// })
+    /// ```
+    pub fn with_join(&mut self, clause: impl Into<String>) -> &mut Self {
+        self.joins.push(clause.into());
+        self
+    }
+
+    /// Set the field type for proper type casting in filters.
+    ///
+    /// Defaults to `FieldType::String` if not specified.
+    pub fn with_field_type(&mut self, field_type: FieldType) -> &mut Self {
+        self.field_type = field_type;
+        self
+    }
+}
+
+/// Stored computed property definition.
+///
+/// Represents a virtual column that maps to a SQL expression,
+/// with optional JOIN clauses that are activated when the property is used.
+#[derive(Debug, Clone)]
+pub struct ComputedProperty {
+    /// The SQL expression (e.g., "counterparty.name" or "(amount_micros / 1000000)::money")
+    pub expression: String,
+    /// JOIN clauses needed for this computed property
+    pub joins: Vec<String>,
+    /// Field type for proper type casting in filters
+    pub field_type: FieldType,
 }

@@ -1,10 +1,9 @@
+use crate::paginated_query_as::models::{Filter, FilterOperator, FilterValue};
 use crate::paginated_query_as::QueryParamsBuilder;
 use crate::{paginated_query_as, QueryBuilder};
 use crate::{PaginatedResponse, QuerySortDirection};
-use chrono::Utc;
 use serde::Serialize;
 use sqlx::{Arguments, FromRow, PgPool, Postgres};
-use std::collections::HashMap;
 
 #[derive(Default, Serialize, FromRow)]
 #[allow(dead_code)]
@@ -21,13 +20,17 @@ pub struct UserExample {
 pub async fn paginated_query_builder_advanced_example(
     pool: PgPool,
 ) -> PaginatedResponse<UserExample> {
-    let some_extra_filters =
-        HashMap::from([("a", Some("1".to_string())), ("b", Some("2".to_string()))]);
+    let some_extra_filters = vec![
+        Filter {
+            field: "role".to_string(),
+            operator: FilterOperator::Eq,
+            value: FilterValue::String("admin".to_string()),
+        },
+    ];
     let initial_params = QueryParamsBuilder::<UserExample>::new()
         .with_search("john", vec!["name", "email"])
         .with_pagination(1, 10)
-        .with_date_range(Some(Utc::now()), None, None::<String>)
-        .with_filter("status", Some("active"))
+        .with_eq_filter("status", "active")
         .with_filters(some_extra_filters)
         .with_sort("created_at", QuerySortDirection::Descending)
         .build();
@@ -39,7 +42,6 @@ pub async fn paginated_query_builder_advanced_example(
             QueryBuilder::<UserExample, Postgres>::new()
                 .with_search(params) // Add or remove search feature from the query;
                 .with_filters(params) // Add or remove custom filters from the query;
-                .with_date_range(params) // Add or remove data range;
                 .with_raw_condition("") // Add raw condition, no checks.
                 .disable_protection() // This removes all column safety checks.
                 .with_combined_conditions(|builder| {

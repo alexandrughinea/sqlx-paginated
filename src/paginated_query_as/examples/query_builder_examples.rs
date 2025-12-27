@@ -87,6 +87,20 @@ pub mod sqlite_examples {
     use sqlx::{Database, Sqlite};
 
     #[allow(dead_code)]
+    pub fn build_query_with_safe_defaults<'q, T>(
+        params: &'q QueryParams<T>,
+    ) -> (Vec<String>, SqliteArguments<'q>)
+    where
+        T: Default + Serialize,
+    {
+        QueryBuilder::<'q, T, Sqlite>::new()
+            .with_search(params)
+            .with_filters(params)
+            .with_date_range(params)
+            .build()
+    }
+
+    #[allow(dead_code)]
     pub fn builder_new_query_with_disabled_protection_for_sqlite<'q, T, DB>(
         params: &'q QueryParams<T>,
     ) -> (Vec<String>, DB::Arguments<'q>)

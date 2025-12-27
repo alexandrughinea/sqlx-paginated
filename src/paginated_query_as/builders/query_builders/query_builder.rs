@@ -222,15 +222,19 @@ where
             if self.is_column_safe(date_column) {
                 if let Some(after) = params.date_range.date_after {
                     let next_argument = self.arguments.len() + 1;
+                    let table_column = self.dialect.quote_identifier(date_column);
+                    let placeholder = self.dialect.placeholder(next_argument);
                     self.conditions
-                        .push(format!("{} >= ${}", date_column, next_argument));
+                        .push(format!("{} >= {}", table_column, placeholder));
                     self.arguments.add(after).unwrap_or_default();
                 }
 
                 if let Some(before) = params.date_range.date_before {
                     let next_argument = self.arguments.len() + 1;
+                    let table_column = self.dialect.quote_identifier(date_column);
+                    let placeholder = self.dialect.placeholder(next_argument);
                     self.conditions
-                        .push(format!("{} <= ${}", date_column, next_argument));
+                        .push(format!("{} <= {}", table_column, placeholder));
                     self.arguments.add(before).unwrap_or_default();
                 }
             } else {
@@ -284,11 +288,13 @@ where
     ) -> Self {
         if self.is_column_safe(column) {
             let next_argument = self.arguments.len() + 1;
+            let table_column = self.dialect.quote_identifier(column);
+            let placeholder = self.dialect.placeholder(next_argument);
             self.conditions.push(format!(
-                "{} {} ${}",
-                quote_identifier(column),
+                "{} {} {}",
+                table_column,
                 condition.into(),
-                next_argument
+                placeholder
             ));
             let _ = self.arguments.add(value);
         } else {

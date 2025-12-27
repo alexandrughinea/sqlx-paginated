@@ -44,14 +44,14 @@ A blazingly fast, type-safe, fluid query builder for dynamic APIs, offering seam
 ## Features
 
 ### Core Capabilities
-- 🔍 Full-text search with column specification
-- 📑 Smart pagination with customizable page size
-- 🔄 Dynamic sorting on any column
-- 🎯 Flexible filtering system 
-- 📅 Date range filtering
-- 🔒 Type-safe operations
-- 🔥 High performance
-- 🛡️ SQL injection protection
+- Full-text search with column specification
+- Smart pagination with customizable page size
+- Dynamic sorting on any column
+- Flexible filtering system 
+- Date range filtering
+- Type-safe operations
+- High performance
+- SQL injection protection
 
 ### Technical Features
 - Builder patterns for query parameters and query construction
@@ -71,13 +71,12 @@ A blazingly fast, type-safe, fluid query builder for dynamic APIs, offering seam
 ## Database Support
 
 ### Current vs Planned Support
-| Database    | Status      | Version | Features                           | Notes                                       |
-|-------------|-------------|---------|-----------------------------------|---------------------------------------------|
-| PostgreSQL  | ✅ Supported | 12+     | All features supported            | Ready                                       |
-| SQLite      | 🚧 Planned  | 3.35+   | Basic features planned           | On roadmap, development starting in Q2 2025 |
-| MySQL       | 🚧 Planned  | 8.0+    | Core features planned            | On roadmap, development starting in Q3 2025 |
+| Database    | Status      | Version | Features                  | Notes                                       |
+|-------------|-------------|---------|---------------------------|---------------------------------------------|
+| PostgreSQL  | ✅ Supported | 12+     | All features supported    | Production ready                            |
+| SQLite      | 🚧 Testing  | 3.35+   | All features being tested | Testing                                     |
+| MySQL       | 🚧 Planned  | 8.0+    | Core features planned     | On roadmap, development starting in Q2 2026 |
 
-⚠️ Note: `This documentation covers PostgreSQL features only, as it's currently the only supported database.`
 
 ## Market Analysis
 
@@ -96,7 +95,7 @@ A blazingly fast, type-safe, fluid query builder for dynamic APIs, offering seam
 
 1. **Quick Web Framework Integration with minimal footprint**
 
-[Actix Web](https://actix.rs/) handler example
+Actix Web handler example:
 ```rust
 use sqlx_paginated::{paginated_query_as, FlatQueryParams};
 use actix_web::{web, Responder, HttpResponse};
@@ -162,16 +161,35 @@ let params = QueryParamsBuilder::<User>::new()
 ## Installation
 
 Add to `Cargo.toml`:
+
+**For PostgreSQL:**
 ```toml
 [dependencies]
-sqlx_paginated = { version = "0.2.29", features = ["postgres"] }
+sqlx_paginated = { version = "0.2.33", features = ["postgres"] }
+```
+
+**For SQLite:**
+```toml
+[dependencies]
+sqlx_paginated = { version = "0.2.33", features = ["sqlite"] }
+```
+
+**For both:**
+```toml
+[dependencies]
+sqlx_paginated = { version = "0.2.33", features = ["postgres", "sqlite"] }
 ```
 
 ## Quick Start
 
 ### Basic Usage
+
+**PostgreSQL:**
 ```rust
-#[derive(sqlx::FromRow, serde::Serialize)]
+use sqlx::PgPool;
+use sqlx_paginated::{QueryParamsBuilder, QuerySortDirection, paginated_query_as};
+
+#[derive(sqlx::FromRow, serde::Serialize, Default)]
 struct User {
     id: i64,
     first_name: String,
@@ -181,21 +199,36 @@ struct User {
     created_at: Option<DateTime<Utc>>,
 }
 
-/// Macro usage example
 async fn get_users(pool: &PgPool) -> Result<PaginatedResponse<User>, sqlx::Error> {
     let params = QueryParamsBuilder::<User>::new()
         .with_pagination(1, 10)
         .with_sort("created_at", QuerySortDirection::Descending)
-        .with_search("replace with dynamic value", vec!["first_name", "last_name", "email"])
+        .with_search("john", vec!["first_name", "last_name", "email"])
         .build();
-    let paginated_response = paginated_query_as!(User, "SELECT * FROM users")
-        // Alternative function call example (if macros don't fit your use case):
-        // paginated_query_as::<User>("SELECT * FROM users")
+        
+    paginated_query_as!(User, "SELECT * FROM users")
         .with_params(params)
         .fetch_paginated(pool)
-        .await?;
+        .await
+}
+```
 
-    Ok(paginated_response)
+**SQLite:**
+```rust
+use sqlx::SqlitePool;
+use sqlx_paginated::{QueryParamsBuilder, QuerySortDirection, paginated_query_as_sqlite};
+
+async fn get_users(pool: &SqlitePool) -> Result<PaginatedResponse<User>, sqlx::Error> {
+    let params = QueryParamsBuilder::<User>::new()
+        .with_pagination(1, 10)
+        .with_sort("created_at", QuerySortDirection::Descending)
+        .with_search("john", vec!["first_name", "last_name", "email"])
+        .build();
+        
+    paginated_query_as_sqlite!(User, "SELECT * FROM users")
+        .with_params(params)
+        .fetch_paginated(pool)
+        .await
 }
 ```
 

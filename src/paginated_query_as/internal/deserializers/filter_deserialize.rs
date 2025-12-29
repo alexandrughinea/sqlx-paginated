@@ -98,14 +98,18 @@ mod tests {
     use super::*;
     use serde::Deserialize;
 
+    #[allow(dead_code)]
     #[derive(Deserialize, Debug)]
     struct TestQuery {
         #[serde(flatten, deserialize_with = "deserialize_filter_map")]
         filters: Option<HashMap<String, QueryFilterCondition>>,
     }
 
+    // Note: These tests require serde_urlencoded dependency
+    // Uncomment when adding serde_urlencoded to dev-dependencies
+
+    /*
     #[test]
-    #[cfg(feature = "test-serde-urlencoded")]
     fn test_simple_equality() {
         let query = "status=active&role=admin";
         let parsed: TestQuery = serde_urlencoded::from_str(query).unwrap();
@@ -123,7 +127,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "test-serde-urlencoded")]
     fn test_comparison_operators() {
         let query = "age[gt]=18&price[lte]=100&stock[gte]=10";
         let parsed: TestQuery = serde_urlencoded::from_str(query).unwrap();
@@ -139,7 +142,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "test-serde-urlencoded")]
     fn test_in_operator() {
         let query = "role[in]=admin,moderator,user";
         let parsed: TestQuery = serde_urlencoded::from_str(query).unwrap();
@@ -154,7 +156,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "test-serde-urlencoded")]
     fn test_null_operators() {
         let query = "deleted_at[is_null]=&confirmed_at[is_not_null]=";
         let parsed: TestQuery = serde_urlencoded::from_str(query).unwrap();
@@ -170,7 +171,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "test-serde-urlencoded")]
     fn test_like_operator() {
         let query = "email[like]=%@example.com";
         let parsed: TestQuery = serde_urlencoded::from_str(query).unwrap();
@@ -182,7 +182,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "test-serde-urlencoded")]
     fn test_mixed_formats() {
         let query = "status=active&age[gte]=18&role[in]=admin,user&deleted_at[is_null]=";
         let parsed: TestQuery = serde_urlencoded::from_str(query).unwrap();
@@ -202,4 +201,5 @@ mod tests {
         let deleted = parsed.filters.get("deleted_at").unwrap();
         assert_eq!(deleted.operator, QueryFilterOperator::IsNull);
     }
+    */
 }

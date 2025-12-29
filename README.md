@@ -95,13 +95,14 @@ A blazingly fast, type-safe, fluid query builder for dynamic APIs, offering seam
 
 1. **Quick Web Framework Integration with minimal footprint**
 
-Actix Web handler example:
+[Actix-web](https://actix.rs/) handler example:
 ```rust
+use sqlx::Postgres;
 use sqlx_paginated::{paginated_query_as, FlatQueryParams};
 use actix_web::{web, Responder, HttpResponse};
 
 async fn list_users(web::Query(params): web::Query<FlatQueryParams>) -> impl Responder {
-    let paginated_users = paginated_query_as!(User, "SELECT * FROM users")
+    let paginated_users = paginated_query_as::<User, Postgres>("SELECT * FROM users")
         .with_params(params)
         .fetch_paginated(&pool)
         .await
@@ -125,7 +126,7 @@ let params = QueryParamsBuilder::<User>::new()
 - Fluent API for the entire supported feature set, more here: [advanced example](src/paginated_query_as/examples/paginated_query_builder_advanced_examples.rs)
 
 ```rust
-    paginated_query_as!(UserExample, "SELECT * FROM users")
+    paginated_query_as::<UserExample, Postgres>("SELECT * FROM users")
         .with_params(initial_params)
         .with_query_builder(|params| {
             // Can override the default query builder (build_query_with_safe_defaults) with a complete custom one:
@@ -186,7 +187,7 @@ sqlx_paginated = { version = "0.2.33", features = ["postgres", "sqlite"] }
 
 **PostgreSQL:**
 ```rust
-use sqlx::PgPool;
+use sqlx::{PgPool, Postgres};
 use sqlx_paginated::{QueryParamsBuilder, QuerySortDirection, paginated_query_as};
 
 #[derive(sqlx::FromRow, serde::Serialize, Default)]
@@ -205,18 +206,22 @@ async fn get_users(pool: &PgPool) -> Result<PaginatedResponse<User>, sqlx::Error
         .with_sort("created_at", QuerySortDirection::Descending)
         .with_search("john", vec!["first_name", "last_name", "email"])
         .build();
-        
-    paginated_query_as!(User, "SELECT * FROM users")
+    
+    // Function syntax (recommended)
+    paginated_query_as::<User, Postgres>("SELECT * FROM users")
         .with_params(params)
         .fetch_paginated(pool)
         .await
+    
+    // Or using macro syntax
+    // paginated_query_as!(User, Postgres, "SELECT * FROM users")
 }
 ```
 
 **SQLite:**
 ```rust
-use sqlx::SqlitePool;
-use sqlx_paginated::{QueryParamsBuilder, QuerySortDirection, paginated_query_as_sqlite};
+use sqlx::{SqlitePool, Sqlite};
+use sqlx_paginated::{QueryParamsBuilder, QuerySortDirection, paginated_query_as};
 
 async fn get_users(pool: &SqlitePool) -> Result<PaginatedResponse<User>, sqlx::Error> {
     let params = QueryParamsBuilder::<User>::new()
@@ -224,11 +229,15 @@ async fn get_users(pool: &SqlitePool) -> Result<PaginatedResponse<User>, sqlx::E
         .with_sort("created_at", QuerySortDirection::Descending)
         .with_search("john", vec!["first_name", "last_name", "email"])
         .build();
-        
-    paginated_query_as_sqlite!(User, "SELECT * FROM users")
+    
+    // Function syntax (recommended)
+    paginated_query_as::<User, Sqlite>("SELECT * FROM users")
         .with_params(params)
         .fetch_paginated(pool)
         .await
+    
+    // Or using macro syntax
+    // paginated_query_as!(User, Sqlite, "SELECT * FROM users")
 }
 ```
 
@@ -253,59 +262,219 @@ async fn get_users(pool: &SqlitePool) -> Result<PaginatedResponse<User>, sqlx::E
 
 ## API Reference
 
-### Pagination Parameters
-| Parameter  | Type    | Default | Min | Max | Description                    |
-|------------|---------|---------|-----|-----|--------------------------------|
-| page       | integer | 1       | 1   | n/a | Current page number            |
-| page_size  | integer | 10      | 10  | 50  | Number of records per page     |
+### Parameter Overview
 
-#### Example:
-```
-GET /v1/internal/users?page=2&page_size=20
-```
+| Feature | HTTP Parameters | Builder Method |
+|---------|----------------|----------------|
+| Pagination | `page`, `page_size` | `.with_pagination(page, size)` |
+| Sorting | `sort_column`, `sort_direction` | `.with_sort(column, direction)` |
+| Search | `search`, `search_columns` | `.with_search(term, columns)` |
+| Date Range | `date_after`, `date_before`, `date_column` | `.with_date_range(after, before, column)` |
+| Filters | `field=value`, `field[op]=value` | `.with_filter_operator(field, operator, value)` |
 
-### Sort Parameters
-| Parameter      | Type   | Default    | Allowed Values              | Description                |
-|----------------|--------|------------|----------------------------|----------------------------|
-| sort_column    | string | created_at | Any valid table column     | Column name to sort by     |
-| sort_direction | string | descending | ascending, descending      | Sort direction             |
+### Pagination
 
-#### Example:
-```
-GET /v1/internal/users?sort_column=last_name&sort_direction=ascending
-```
+| Parameter | Type | Default | Range | Description |
+|-----------|------|---------|-------|-------------|
+| `page` | integer | `1` | 1+ | Page number (1-indexed) |
+| `page_size` | integer | `10` | 10-50 | Records per page |
 
-### Search Parameters
-| Parameter      | Type   | Default           | Max Length | Description                          |
-|----------------|--------|-------------------|------------|--------------------------------------|
-| search         | string | null             | 100        | Search term to filter results         |
-| search_columns | string | name,description | n/a        | Comma-separated list of columns       |
-
-#### Example:
 ```
-GET /v1/internal/users?search=john&search_columns=first_name,last_name,email
+GET /users?page=2&page_size=20
 ```
 
-### Date Range Parameters
-| Parameter    | Type     | Default    | Format    | Description           |
-|-------------|----------|------------|-----------|----------------------|
-| date_column | string   | created_at | Column name| Column to filter on   |
-| date_after  | datetime | null       | ISO 8601  | Start of date range   |
-| date_before | datetime | null       | ISO 8601  | End of date range     |
-
-#### Example:
-```
-GET /v1/internal/users?date_column=created_at&date_after=2024-01-01T00:00:00Z
+```rust
+.with_pagination(2, 20)
 ```
 
-### Filtering Parameters
-| Parameter | Type                    | Default           | Max Length | Description                             |
-|-----------|-------------------------|-------------------|------------|-----------------------------------------|
-| *         | string,boolean,datetime | null             | 100        | Any valid table column for given struct |
+### Sorting
 
-#### Example:
+| Parameter | Type | Default | Values | Description |
+|-----------|------|---------|--------|-------------|
+| `sort_column` | string | `created_at` | Any valid column | Column to sort by |
+| `sort_direction` | string | `descending` | `ascending`, `descending` | Sort order |
+
 ```
-GET /v1/internal/users?confirmed=true
+GET /users?sort_column=last_name&sort_direction=ascending
+```
+
+```rust
+use sqlx_paginated::QuerySortDirection;
+
+.with_sort("last_name", QuerySortDirection::Ascending)
+```
+
+### Search
+
+| Parameter | Type | Default | Constraint | Description |
+|-----------|------|---------|------------|-------------|
+| `search` | string | null | Max 100 chars | Search term (sanitized: alphanumeric, spaces, hyphens) |
+| `search_columns` | string | `name,description` | Comma-separated | Columns to search |
+
+```
+GET /users?search=john&search_columns=first_name,last_name,email
+```
+
+```rust
+.with_search("john", vec!["first_name", "last_name", "email"])
+```
+
+**Generated SQL:**
+```sql
+WHERE (LOWER("first_name") LIKE LOWER('%john%') 
+    OR LOWER("last_name") LIKE LOWER('%john%')
+    OR LOWER("email") LIKE LOWER('%john%'))
+```
+
+### Date Range
+
+| Parameter | Type | Default | Format | Description |
+|-----------|------|---------|--------|-------------|
+| `date_after` | datetime | null | ISO 8601 | Range start (>=) |
+| `date_before` | datetime | null | ISO 8601 | Range end (<=) |
+| `date_column` | string | `created_at` | Column name | Target column |
+
+```
+GET /users?date_after=2024-01-01T00:00:00Z&date_before=2024-12-31T23:59:59Z
+```
+
+```rust
+use chrono::{DateTime, Utc};
+
+let start = DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z").unwrap().into();
+let end = DateTime::parse_from_rfc3339("2024-12-31T23:59:59Z").unwrap().into();
+
+.with_date_range(Some(start), Some(end), Some("created_at"))
+```
+
+### Filter Operators
+
+#### Operator Reference
+
+| Operator | HTTP Syntax | Rust Method | SQL Output |
+|----------|-------------|-------------|------------|
+| Equal | `field=value` | `.with_filter("field", Some("value"))` | `field = $1` |
+| Not Equal | `field[ne]=value` | `.with_filter_operator("field", NotEqual, "value")` | `field != $1` |
+| Greater Than | `field[gt]=value` | `.with_filter_operator("field", GreaterThan, "value")` | `field > $1` |
+| Greater or Equal | `field[gte]=value` | `.with_filter_operator("field", GreaterOrEqual, "value")` | `field >= $1` |
+| Less Than | `field[lt]=value` | `.with_filter_operator("field", LessThan, "value")` | `field < $1` |
+| Less or Equal | `field[lte]=value` | `.with_filter_operator("field", LessOrEqual, "value")` | `field <= $1` |
+| IN | `field[in]=a,b,c` | `.with_filter_in("field", vec!["a","b","c"])` | `field IN ($1,$2,$3)` |
+| NOT IN | `field[nin]=a,b` | `.with_filter_not_in("field", vec!["a","b"])` | `field NOT IN ($1,$2)` |
+| IS NULL | `field[is_null]=` | `.with_filter_null("field", true)` | `field IS NULL` |
+| IS NOT NULL | `field[is_not_null]=` | `.with_filter_null("field", false)` | `field IS NOT NULL` |
+| LIKE | `field[like]=%pattern%` | `.with_filter_like("field", "%pattern%")` | `field LIKE $1` |
+| NOT LIKE | `field[nlike]=%pattern%` | `.with_filter_not_like("field", "%pattern%")` | `field NOT LIKE $1` |
+
+#### HTTP Examples
+
+```
+GET /products?price[gte]=10&price[lte]=100
+GET /users?role[in]=admin,moderator&status[ne]=banned
+GET /users?deleted_at[is_null]=&email[is_not_null]=
+GET /users?email[like]=%@company.com
+```
+
+#### Rust Examples
+
+```rust
+use sqlx_paginated::{QueryParamsBuilder, QueryFilterOperator};
+
+// Basic operators
+QueryParamsBuilder::<Product>::new()
+    .with_filter_operator("price", QueryFilterOperator::GreaterThan, "10.00")
+    .with_filter_operator("stock", QueryFilterOperator::LessOrEqual, "100")
+    .with_filter("status", Some("active"))
+    .build()
+
+// Convenience methods
+QueryParamsBuilder::<User>::new()
+    .with_filter_in("role", vec!["admin", "moderator"])
+    .with_filter_null("deleted_at", true)
+    .build()
+
+// Using QueryFilterCondition
+use sqlx_paginated::QueryFilterCondition;
+use std::collections::HashMap;
+
+let mut filters = HashMap::new();
+filters.insert("price".to_string(), QueryFilterCondition::greater_than("50.00"));
+filters.insert("status".to_string(), QueryFilterCondition::not_equal("deleted"));
+
+QueryParamsBuilder::<Product>::new()
+    .with_filter_conditions(filters)
+    .build()
+```
+
+### Web Framework Integration
+
+**[Actix-web](https://actix.rs/):**
+```rust
+use actix_web::{web::Query, HttpResponse};
+use sqlx_paginated::{FlatQueryParams, paginated_query_as};
+use sqlx::Postgres;
+
+async fn list_users(
+    Query(params): Query<FlatQueryParams>,
+    pool: web::Data<PgPool>
+) -> HttpResponse {
+    let result = paginated_query_as::<User, Postgres>("SELECT * FROM users")
+        .with_params(params)
+        .fetch_paginated(pool.get_ref())
+        .await
+        .unwrap();
+    
+    HttpResponse::Ok().json(result)
+}
+```
+
+**[Axum](https://docs.rs/axum/latest/axum/):**
+```rust
+use axum::{extract::Query, Json, Extension};
+use sqlx_paginated::{FlatQueryParams, paginated_query_as, PaginatedResponse};
+use sqlx::{PgPool, Postgres};
+
+async fn list_users(
+    Query(params): Query<FlatQueryParams>,
+    Extension(pool): Extension<PgPool>
+) -> Json<PaginatedResponse<User>> {
+    let result = paginated_query_as::<User, Postgres>("SELECT * FROM users")
+        .with_params(params)
+        .fetch_paginated(&pool)
+        .await
+        .unwrap();
+    
+    Json(result)
+}
+```
+
+### Complete Example
+
+**HTTP:**
+```
+GET /products?search=laptop&search_columns=name,description
+    &price[gte]=500&price[lte]=2000&stock[gt]=0
+    &category[in]=computers,electronics
+    &status=active&deleted_at[is_null]=
+    &sort_column=price&sort_direction=ascending
+    &page=1&page_size=24
+```
+
+**Rust:**
+```rust
+use sqlx_paginated::{QueryParamsBuilder, QuerySortDirection, QueryFilterOperator};
+
+let params = QueryParamsBuilder::<Product>::new()
+    .with_search("laptop", vec!["name", "description"])
+    .with_filter_operator("price", QueryFilterOperator::GreaterOrEqual, "500")
+    .with_filter_operator("price", QueryFilterOperator::LessOrEqual, "2000")
+    .with_filter_operator("stock", QueryFilterOperator::GreaterThan, "0")
+    .with_filter_in("category", vec!["computers", "electronics"])
+    .with_filter("status", Some("active"))
+    .with_filter_null("deleted_at", true)
+    .with_sort("price", QuerySortDirection::Ascending)
+    .with_pagination(1, 24)
+    .build();
 ```
 
 ## Query Examples

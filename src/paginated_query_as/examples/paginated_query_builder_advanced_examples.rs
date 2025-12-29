@@ -1,11 +1,19 @@
+#[cfg(feature = "postgres")]
 use crate::paginated_query_as::QueryParamsBuilder;
+#[cfg(feature = "postgres")]
 use crate::{paginated_query_as, QueryBuilder};
+#[cfg(feature = "postgres")]
 use crate::{PaginatedResponse, QuerySortDirection};
+#[cfg(feature = "postgres")]
 use chrono::Utc;
+#[cfg(feature = "postgres")]
 use serde::Serialize;
+#[cfg(feature = "postgres")]
 use sqlx::{Arguments, FromRow, PgPool, Postgres};
+#[cfg(feature = "postgres")]
 use std::collections::HashMap;
 
+#[cfg(feature = "postgres")]
 #[derive(Default, Serialize, FromRow)]
 #[allow(dead_code)]
 pub struct UserExample {
@@ -17,6 +25,7 @@ pub struct UserExample {
     score: i32,
 }
 
+#[cfg(feature = "postgres")]
 #[allow(dead_code)]
 pub async fn paginated_query_builder_advanced_example(
     pool: PgPool,
@@ -32,7 +41,7 @@ pub async fn paginated_query_builder_advanced_example(
         .with_sort("created_at", QuerySortDirection::Descending)
         .build();
 
-    paginated_query_as!(UserExample, "SELECT * FROM users")
+    paginated_query_as!(UserExample, Postgres, "SELECT * FROM users")
         .with_params(initial_params)
         .with_query_builder(|params| {
             // Can override the default query builder (build_query_with_safe_defaults) with a complete custom one:

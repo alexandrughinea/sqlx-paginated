@@ -23,7 +23,7 @@ where
             conditions: Vec::new(),
             arguments: sqlx::postgres::PgArguments::default(),
             valid_columns: get_struct_field_names::<T>(),
-            protection: Some(ColumnProtection::default()),
+            protection: Some(ColumnProtection::for_postgres()),
             protection_enabled: true,
             dialect: Box::new(PostgresDialect),
             _phantom: PhantomData,

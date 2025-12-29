@@ -28,21 +28,11 @@ pub fn get_sqlite_type_casting(value: &str) -> &'static str {
         // Binary data - SQLite stores as BLOB
         // SQLite hex literal format: X'...' or x'...'
         value if (value.starts_with("x'") || value.starts_with("X'")) && value.ends_with('\'') => {
-            let hex_content = &value[2..value.len() - 1];
-            if hex_content.chars().all(|c| c.is_ascii_hexdigit()) {
-                DEFAULT_EMPTY_VALUE
-            } else {
-                DEFAULT_EMPTY_VALUE
-            }
+            DEFAULT_EMPTY_VALUE
         }
 
         // JSON - SQLite supports JSON via JSON1 extension (stored as TEXT)
-        value if value.starts_with('{') || value.starts_with('[') => {
-            match serde_json::from_str::<serde_json::Value>(value) {
-                Ok(_) => DEFAULT_EMPTY_VALUE,
-                Err(_) => DEFAULT_EMPTY_VALUE,
-            }
-        }
+        value if value.starts_with('{') || value.starts_with('[') => DEFAULT_EMPTY_VALUE,
 
         // Dates and Times - SQLite stores as TEXT, REAL, or INTEGER
         value if NaiveDateTime::parse_from_str(value, "%Y-%m-%d %H:%M:%S").is_ok() => {

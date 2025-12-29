@@ -4,6 +4,12 @@ use crate::{FlatQueryParams, PaginatedResponse, QueryParams};
 use serde::Serialize;
 use sqlx::{query::QueryAs, Database, Execute, Executor, FromRow, IntoArguments, Pool};
 
+type QueryBuilderFn<T, DB> = Box<
+    dyn for<'p> Fn(&'p QueryParams<T>) -> (Vec<String>, <DB as Database>::Arguments<'p>)
+        + Send
+        + Sync,
+>;
+
 pub struct PaginatedQueryBuilder<'q, T, DB, A>
 where
     DB: Database,
@@ -12,8 +18,7 @@ where
     query: QueryAs<'q, DB, T, A>,
     params: QueryParams<'q, T>,
     totals_count_enabled: bool,
-    build_query_fn:
-        Box<dyn for<'p> Fn(&'p QueryParams<T>) -> (Vec<String>, DB::Arguments<'p>) + Send + Sync>,
+    build_query_fn: QueryBuilderFn<T, DB>,
 }
 
 /// A builder for constructing and executing paginated queries.

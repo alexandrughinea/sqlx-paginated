@@ -23,7 +23,7 @@ where
             conditions: Vec::new(),
             arguments: sqlx::sqlite::SqliteArguments::default(),
             valid_columns: get_struct_field_names::<T>(),
-            protection: Some(ColumnProtection::default()),
+            protection: Some(ColumnProtection::for_sqlite()),
             protection_enabled: true,
             dialect: Box::new(SqliteDialect),
             _phantom: PhantomData,

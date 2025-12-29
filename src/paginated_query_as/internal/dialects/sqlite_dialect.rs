@@ -27,18 +27,24 @@ mod tests {
         // Simple identifier
         assert_eq!(dialect.quote_identifier("column_name"), "\"column_name\"");
         assert_eq!(dialect.quote_identifier("table"), "\"table\"");
-        
+
         // Identifier with spaces
         assert_eq!(dialect.quote_identifier("my column"), "\"my column\"");
-        
+
         // Identifier with special characters
         assert_eq!(dialect.quote_identifier("user-name"), "\"user-name\"");
         assert_eq!(dialect.quote_identifier("table.column"), "\"table.column\"");
-        
+
         // Identifier with quotes (should be escaped)
-        assert_eq!(dialect.quote_identifier("column\"name"), "\"column\"\"name\"");
-        assert_eq!(dialect.quote_identifier("my\"table\"name"), "\"my\"\"table\"\"name\"");
-        
+        assert_eq!(
+            dialect.quote_identifier("column\"name"),
+            "\"column\"\"name\""
+        );
+        assert_eq!(
+            dialect.quote_identifier("my\"table\"name"),
+            "\"my\"\"table\"\"name\""
+        );
+
         // Empty string
         assert_eq!(dialect.quote_identifier(""), "\"\"");
     }

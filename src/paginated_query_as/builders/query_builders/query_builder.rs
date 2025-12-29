@@ -1,4 +1,4 @@
-use crate::paginated_query_as::internal::{quote_identifier, ColumnProtection, QueryDialect};
+use crate::paginated_query_as::internal::{ColumnProtection, QueryDialect};
 use crate::QueryParams;
 use chrono::{DateTime, Utc};
 use serde::Serialize;

@@ -12,7 +12,8 @@ where
     query: QueryAs<'q, DB, T, A>,
     params: QueryParams<'q, T>,
     totals_count_enabled: bool,
-    build_query_fn: Box<dyn for<'p> Fn(&'p QueryParams<T>) -> (Vec<String>, DB::Arguments<'p>) + Send + Sync>,
+    build_query_fn:
+        Box<dyn for<'p> Fn(&'p QueryParams<T>) -> (Vec<String>, DB::Arguments<'p>) + Send + Sync>,
 }
 
 /// A builder for constructing and executing paginated queries.
@@ -64,7 +65,7 @@ where
     /// struct UserExample {
     ///     name: String
     /// }
-    /// let base_query = sqlx::query_as::<_, UserExample>("SELECT * FROM users");
+    /// let base_query = sqlx::query_as::<Postgres, UserExample>("SELECT * FROM users");
     /// let builder = PaginatedQueryBuilder::new(base_query, |params| {
     ///     sqlx_paginated::QueryBuilder::<UserExample, Postgres>::new()
     ///         .with_search(params)
@@ -75,7 +76,10 @@ where
     /// ```
     pub fn new<F>(query: QueryAs<'q, DB, T, A>, build_query_fn: F) -> Self
     where
-        F: for<'p> Fn(&'p QueryParams<T>) -> (Vec<String>, DB::Arguments<'p>) + Send + Sync + 'static,
+        F: for<'p> Fn(&'p QueryParams<T>) -> (Vec<String>, DB::Arguments<'p>)
+            + Send
+            + Sync
+            + 'static,
     {
         Self {
             query,
@@ -85,12 +89,12 @@ where
         }
     }
 
-    pub fn with_query_builder<F>(
-        mut self,
-        build_query_fn: F,
-    ) -> Self
+    pub fn with_query_builder<F>(mut self, build_query_fn: F) -> Self
     where
-        F: for<'p> Fn(&'p QueryParams<T>) -> (Vec<String>, DB::Arguments<'p>) + Send + Sync + 'static,
+        F: for<'p> Fn(&'p QueryParams<T>) -> (Vec<String>, DB::Arguments<'p>)
+            + Send
+            + Sync
+            + 'static,
     {
         self.build_query_fn = Box::new(build_query_fn);
         self
@@ -167,7 +171,11 @@ where
 #[cfg(feature = "postgres")]
 impl<'q, T, A> PaginatedQueryBuilder<'q, T, sqlx::Postgres, A>
 where
-    T: for<'r> FromRow<'r, <sqlx::Postgres as sqlx::Database>::Row> + Send + Unpin + Serialize + Default,
+    T: for<'r> FromRow<'r, <sqlx::Postgres as sqlx::Database>::Row>
+        + Send
+        + Unpin
+        + Serialize
+        + Default,
     A: 'q + IntoArguments<'q, sqlx::Postgres> + Send,
 {
     /// Creates a new `PaginatedQueryBuilder` for PostgreSQL with default settings.
@@ -193,12 +201,14 @@ where
     /// struct UserExample {
     ///     name: String
     /// }
-    /// let base_query = sqlx::query_as::<_, UserExample>("SELECT * FROM users");
-    /// let builder = PaginatedQueryBuilder::new_with_defaults(base_query);
+    /// let base_query = sqlx::query_as::<Postgres, UserExample>("SELECT * FROM users");
+    /// let builder = PaginatedQueryBuilder::<UserExample, Postgres, _>::new_with_defaults(base_query);
     /// ```
     pub fn new_with_defaults(query: sqlx::query::QueryAs<'q, sqlx::Postgres, T, A>) -> Self {
         use crate::paginated_query_as::examples::postgres_examples::build_query_with_safe_defaults;
-        Self::new(query, |params| build_query_with_safe_defaults::<T, sqlx::Postgres>(params))
+        Self::new(query, |params| {
+            build_query_with_safe_defaults::<T, sqlx::Postgres>(params)
+        })
     }
 
     /// Executes the paginated query and returns the results.
@@ -221,7 +231,7 @@ where
     /// # Example
     ///
     /// ```rust,no_run
-    /// use sqlx::{FromRow, PgPool};
+    /// use sqlx::{FromRow, PgPool, Postgres};
     /// use serde::Serialize;
     /// use sqlx_paginated::{PaginatedQueryBuilder, QueryParamsBuilder};
     ///
@@ -236,8 +246,8 @@ where
     ///     .with_pagination(1, 10)
     ///     .build();
     ///
-    /// let result = PaginatedQueryBuilder::new_with_defaults(
-    ///     sqlx::query_as::<_, User>("SELECT * FROM users")
+    /// let result = PaginatedQueryBuilder::<User, Postgres, _>::new_with_defaults(
+    ///     sqlx::query_as::<Postgres, User>("SELECT * FROM users")
     /// )
     /// .with_params(params)
     /// .fetch_paginated(&pool)
@@ -307,7 +317,11 @@ where
 #[cfg(feature = "sqlite")]
 impl<'q, T, A> PaginatedQueryBuilder<'q, T, sqlx::Sqlite, A>
 where
-    T: for<'r> FromRow<'r, <sqlx::Sqlite as sqlx::Database>::Row> + Send + Unpin + Serialize + Default,
+    T: for<'r> FromRow<'r, <sqlx::Sqlite as sqlx::Database>::Row>
+        + Send
+        + Unpin
+        + Serialize
+        + Default,
     A: 'q + IntoArguments<'q, sqlx::Sqlite> + Send,
 {
     /// Creates a new `PaginatedQueryBuilder` for SQLite with default settings.
@@ -333,8 +347,8 @@ where
     /// struct UserExample {
     ///     name: String
     /// }
-    /// let base_query = sqlx::query_as::<_, UserExample>("SELECT * FROM users");
-    /// let builder = PaginatedQueryBuilder::new_with_defaults(base_query);
+    /// let base_query = sqlx::query_as::<Sqlite, UserExample>("SELECT * FROM users");
+    /// let builder = PaginatedQueryBuilder::<UserExample, Sqlite, _>::new_with_defaults(base_query);
     /// ```
     pub fn new_with_defaults(query: sqlx::query::QueryAs<'q, sqlx::Sqlite, T, A>) -> Self {
         use crate::QueryBuilder;
@@ -373,7 +387,7 @@ where
     /// # Example
     ///
     /// ```rust,no_run
-    /// use sqlx::{FromRow, SqlitePool};
+    /// use sqlx::{FromRow, SqlitePool, Sqlite};
     /// use serde::Serialize;
     /// use sqlx_paginated::{PaginatedQueryBuilder, QueryParamsBuilder};
     ///
@@ -388,8 +402,8 @@ where
     ///     .with_pagination(1, 10)
     ///     .build();
     ///
-    /// let result = PaginatedQueryBuilder::new_with_defaults(
-    ///     sqlx::query_as::<_, User>("SELECT * FROM users")
+    /// let result = PaginatedQueryBuilder::<User, Sqlite, _>::new_with_defaults(
+    ///     sqlx::query_as::<Sqlite, User>("SELECT * FROM users")
     /// )
     /// .with_params(params)
     /// .fetch_paginated(&pool)

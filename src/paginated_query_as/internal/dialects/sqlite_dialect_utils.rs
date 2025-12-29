@@ -28,7 +28,7 @@ pub fn get_sqlite_type_casting(value: &str) -> &'static str {
         // Binary data - SQLite stores as BLOB
         // SQLite hex literal format: X'...' or x'...'
         value if (value.starts_with("x'") || value.starts_with("X'")) && value.ends_with('\'') => {
-            let hex_content = &value[2..value.len()-1];
+            let hex_content = &value[2..value.len() - 1];
             if hex_content.chars().all(|c| c.is_ascii_hexdigit()) {
                 DEFAULT_EMPTY_VALUE
             } else {
@@ -183,7 +183,7 @@ mod tests {
 
         // Invalid hex should still return empty
         assert_eq!(get_sqlite_type_casting("X'GG'"), "");
-        
+
         // Not SQLite hex format
         assert_eq!(get_sqlite_type_casting("0x1234"), ""); // C-style hex
     }
@@ -245,7 +245,7 @@ mod tests {
         // SQL keywords (should be treated as text)
         assert_eq!(get_sqlite_type_casting("SELECT"), "");
         assert_eq!(get_sqlite_type_casting("DROP TABLE"), "");
-        
+
         // Very long strings
         let long_string = "a".repeat(10000);
         assert_eq!(get_sqlite_type_casting(&long_string), "");
@@ -256,12 +256,12 @@ mod tests {
         // Test that types are matched in the correct order
         // Since SQLite returns empty string for all valid types,
         // we're mainly ensuring the order doesn't cause issues
-        
+
         // Simple numbers
         assert_eq!(get_sqlite_type_casting("0"), ""); // Could be bool or int
         assert_eq!(get_sqlite_type_casting("1"), ""); // Could be bool or int
         assert_eq!(get_sqlite_type_casting("42"), "");
-        
+
         // Boolean-like values
         assert_eq!(get_sqlite_type_casting("true"), "");
         assert_eq!(get_sqlite_type_casting("false"), "");
@@ -270,7 +270,7 @@ mod tests {
 
         // Date vs string
         assert_eq!(get_sqlite_type_casting("2024-01-01"), "");
-        
+
         // UUID vs string
         assert_eq!(
             get_sqlite_type_casting("550e8400-e29b-41d4-a716-446655440000"),
@@ -280,9 +280,8 @@ mod tests {
         // JSON vs string
         assert_eq!(get_sqlite_type_casting("{}"), "");
         assert_eq!(get_sqlite_type_casting("[]"), "");
-        
+
         // Binary vs string
         assert_eq!(get_sqlite_type_casting("X'DEADBEEF'"), "");
     }
 }
-

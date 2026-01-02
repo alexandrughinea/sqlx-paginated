@@ -94,6 +94,7 @@ where
 
                 if !valid_search_columns.is_empty() && !search.trim().is_empty() {
                     let pattern = format!("%{}%", search);
+                    let use_lower = search.is_ascii();
 
                     let search_conditions: Vec<String> = valid_search_columns
                         .iter()
@@ -102,7 +103,11 @@ where
                             let table_column = self.dialect.quote_identifier(column);
                             let placeholder =
                                 self.dialect.placeholder(self.arguments.len() + idx + 1);
-                            format!("LOWER({}) LIKE LOWER({})", table_column, placeholder)
+                            if use_lower {
+                                format!("LOWER({}) LIKE LOWER({})", table_column, placeholder)
+                            } else {
+                                format!("{} LIKE {}", table_column, placeholder)
+                            }
                         })
                         .collect();
 

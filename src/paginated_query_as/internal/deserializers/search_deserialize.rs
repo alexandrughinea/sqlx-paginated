@@ -16,7 +16,15 @@ where
     let normalized_value = value_with_fallbacks
         .trim()
         .chars()
-        .filter(|c| c.is_alphanumeric() || *c == ' ' || *c == '-')
+        .filter(|c| {
+            if c.is_alphanumeric() || *c == ' ' || *c == '-' {
+                true
+            } else if c.is_ascii() {
+                false
+            } else {
+                !c.is_control()
+            }
+        })
         .collect::<String>()
         .split_whitespace()
         .collect::<Vec<_>>()
@@ -25,7 +33,7 @@ where
         .take(DEFAULT_MAX_FIELD_LENGTH as usize)
         .collect::<String>();
 
-    if normalized_value.is_empty() {
+    if normalized_value.trim().is_empty() {
         Ok(None)
     } else {
         Ok(Some(normalized_value))
@@ -77,6 +85,23 @@ mod tests {
                 .unwrap()
                 .len(),
             DEFAULT_MAX_FIELD_LENGTH as usize
+        );
+
+        assert_eq!(
+            deserialize_test(r#""🥶""#, search_deserialize).unwrap(),
+            Some("🥶".to_string())
+        );
+        assert_eq!(
+            deserialize_test(r#""Hello 🦀 World""#, search_deserialize).unwrap(),
+            Some("Hello 🦀 World".to_string())
+        );
+        assert_eq!(
+            deserialize_test(r#""Café""#, search_deserialize).unwrap(),
+            Some("Café".to_string())
+        );
+        assert_eq!(
+            deserialize_test(r#""日本語""#, search_deserialize).unwrap(),
+            Some("日本語".to_string())
         );
     }
 }

@@ -1,0 +1,28 @@
+meta {
+  name: In Stock Filter
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/products?stock[gt]=0&status=active
+  body: none
+  auth: none
+}
+
+params:query {
+  stock[gt]: 0
+  status: active
+}
+
+docs {
+  Filter products that are in stock and active.
+  
+  Operators:
+  - [gt]: Greater than
+  - [gte]: Greater than or equal
+  - [lt]: Less than
+  - [lte]: Less than or equal
+}
+
+

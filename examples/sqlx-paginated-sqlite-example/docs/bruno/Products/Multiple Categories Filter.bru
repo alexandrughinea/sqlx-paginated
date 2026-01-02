@@ -1,0 +1,24 @@
+meta {
+  name: Multiple Categories Filter
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/products?category[in]=computers,electronics
+  body: none
+  auth: none
+}
+
+params:query {
+  category[in]: computers,electronics
+}
+
+docs {
+  Filter products in multiple categories using the IN operator.
+  
+  Operator:
+  - [in]: Field value in comma-separated list
+}
+
+

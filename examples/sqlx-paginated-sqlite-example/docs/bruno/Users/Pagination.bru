@@ -1,0 +1,26 @@
+meta {
+  name: Pagination
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/users?page=1&page_size=5
+  body: none
+  auth: none
+}
+
+params:query {
+  page: 1
+  page_size: 5
+}
+
+docs {
+  Returns first page with 5 users per page.
+  
+  Parameters:
+  - page: Page number (default: 1)
+  - page_size: Items per page (default: 10, max: 100)
+}
+
+

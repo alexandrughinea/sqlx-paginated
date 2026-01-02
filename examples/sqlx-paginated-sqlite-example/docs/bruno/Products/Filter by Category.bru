@@ -1,0 +1,22 @@
+meta {
+  name: Filter by Category
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/products?category=computers
+  body: none
+  auth: none
+}
+
+params:query {
+  category: computers
+}
+
+docs {
+  Filter products by category (computers, electronics, accessories).
+  
+  Simple equality filter: field=value
+}
+

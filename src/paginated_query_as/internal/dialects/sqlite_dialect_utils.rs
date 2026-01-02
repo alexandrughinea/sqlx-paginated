@@ -1,54 +1,10 @@
 use crate::paginated_query_as::internal::DEFAULT_EMPTY_VALUE;
-use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime};
-use sqlx::types::Uuid;
 
 /// SQLite type casting utility
 /// Note: SQLite uses dynamic typing with type affinities (NULL, INTEGER, REAL, TEXT, BLOB)
-/// This function returns empty string for most cases as SQLite handles type conversion automatically
-pub fn get_sqlite_type_casting(value: &str) -> &'static str {
-    match value.trim().to_string().to_lowercase().as_str() {
-        // Special values - no casting needed
-        value
-            if value.eq_ignore_ascii_case("null")
-                || value.eq_ignore_ascii_case("nan")
-                || value.eq_ignore_ascii_case("infinity")
-                || value.eq_ignore_ascii_case("-infinity") =>
-        {
-            DEFAULT_EMPTY_VALUE
-        }
-
-        // Booleans - SQLite stores as INTEGER (0 or 1)
-        value if value == "true" || value == "false" => DEFAULT_EMPTY_VALUE,
-        value if value == "t" || value == "f" => DEFAULT_EMPTY_VALUE,
-        value if value == "0" || value == "1" => DEFAULT_EMPTY_VALUE,
-
-        // UUIDs - SQLite stores as TEXT or BLOB
-        value if Uuid::parse_str(value).is_ok() => DEFAULT_EMPTY_VALUE,
-
-        // Binary data - SQLite stores as BLOB
-        // SQLite hex literal format: X'...' or x'...'
-        value if (value.starts_with("x'") || value.starts_with("X'")) && value.ends_with('\'') => {
-            DEFAULT_EMPTY_VALUE
-        }
-
-        // JSON - SQLite supports JSON via JSON1 extension (stored as TEXT)
-        value if value.starts_with('{') || value.starts_with('[') => DEFAULT_EMPTY_VALUE,
-
-        // Dates and Times - SQLite stores as TEXT, REAL, or INTEGER
-        value if NaiveDateTime::parse_from_str(value, "%Y-%m-%d %H:%M:%S").is_ok() => {
-            DEFAULT_EMPTY_VALUE
-        }
-        value if NaiveDate::parse_from_str(value, "%Y-%m-%d").is_ok() => DEFAULT_EMPTY_VALUE,
-        value if NaiveTime::parse_from_str(value, "%H:%M:%S").is_ok() => DEFAULT_EMPTY_VALUE,
-        value if DateTime::parse_from_rfc3339(value).is_ok() => DEFAULT_EMPTY_VALUE,
-
-        // Numbers - SQLite stores as INTEGER or REAL
-        value if value.parse::<i64>().is_ok() => DEFAULT_EMPTY_VALUE,
-        value if value.parse::<f64>().is_ok() => DEFAULT_EMPTY_VALUE,
-
-        // Default - SQLite handles type conversion automatically
-        _ => DEFAULT_EMPTY_VALUE,
-    }
+/// SQLite handles type conversion automatically, so no explicit casting is needed
+pub fn get_sqlite_type_casting(_value: &str) -> &'static str {
+    DEFAULT_EMPTY_VALUE
 }
 
 #[cfg(test)]

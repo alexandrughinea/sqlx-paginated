@@ -200,6 +200,74 @@ mod sqlite_tests {
         assert_eq!(conditions.len(), 1);
         assert!(conditions[0].contains("\"status\" = ?"));
     }
+
+    #[test]
+    fn test_search_multiple_columns_binding_count() {
+        use sqlx::Arguments;
+
+        let params = QueryParamsBuilder::<TestUser>::new()
+            .with_search("Smith", vec!["name", "email", "status"])
+            .build();
+
+        let (conditions, args) = QueryBuilder::<TestUser, Sqlite>::new()
+            .with_search(&params)
+            .build();
+
+        assert_eq!(
+            conditions.len(),
+            1,
+            "Should have one search condition group"
+        );
+        let condition = &conditions[0];
+        let placeholder_count = condition.matches('?').count();
+        assert_eq!(
+            placeholder_count, 3,
+            "Should have one ? placeholder per search column"
+        );
+
+        assert_eq!(
+            args.len(),
+            3,
+            "SQLite requires one binding per ? placeholder (was 1, should be 3)"
+        );
+
+        assert!(
+            condition.contains(" OR "),
+            "Multiple columns should be joined with OR"
+        );
+    }
+
+    #[test]
+    fn test_search_different_column_counts() {
+        use sqlx::Arguments;
+
+        // One column = one binding
+        let params_1 = QueryParamsBuilder::<TestUser>::new()
+            .with_search("test", vec!["name"])
+            .build();
+        let (_, args_1) = QueryBuilder::<TestUser, Sqlite>::new()
+            .with_search(&params_1)
+            .build();
+        assert_eq!(args_1.len(), 1);
+
+        // Two columns = two bindings
+        let params_2 = QueryParamsBuilder::<TestUser>::new()
+            .with_search("test", vec!["name", "email"])
+            .build();
+        let (_, args_2) = QueryBuilder::<TestUser, Sqlite>::new()
+            .with_search(&params_2)
+            .build();
+        assert_eq!(args_2.len(), 2);
+
+        // Three columns = three bindings
+        let params_3 = QueryParamsBuilder::<TestUser>::new()
+            .with_search("test", vec!["name", "email", "status"])
+            .build();
+        let (_, args_3) = QueryBuilder::<TestUser, Sqlite>::new()
+            .with_search(&params_3)
+            .build();
+        assert_eq!(args_3.len(), 3);
+    }
 }
 
 #[test]

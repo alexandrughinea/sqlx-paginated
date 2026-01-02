@@ -1,0 +1,25 @@
+meta {
+  name: Search Users
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/users?search=Smith&search_columns=first_name,last_name,email
+  body: none
+  auth: none
+}
+
+params:query {
+  search: Smith
+  search_columns: first_name,last_name,email
+  ~email[eq]: frank.miller@example.com
+}
+
+docs {
+  Search for "john" in first_name, last_name, and email fields.
+  
+  Parameters:
+  - search: Search term
+  - search_columns: Comma-separated list of columns to search
+}

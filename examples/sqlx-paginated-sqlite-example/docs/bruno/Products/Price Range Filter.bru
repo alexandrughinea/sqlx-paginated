@@ -1,0 +1,26 @@
+meta {
+  name: Price Range Filter
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/products?price[gte]=50&price[lte]=200
+  body: none
+  auth: none
+}
+
+params:query {
+  price[gte]: 50
+  price[lte]: 200
+}
+
+docs {
+  Filter products with price between $50 and $200.
+  
+  Advanced operators:
+  - [gte]: Greater than or equal
+  - [lte]: Less than or equal
+}
+
+

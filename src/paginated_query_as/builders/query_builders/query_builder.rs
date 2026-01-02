@@ -94,13 +94,14 @@ where
 
                 if !valid_search_columns.is_empty() && !search.trim().is_empty() {
                     let pattern = format!("%{}%", search);
-                    let next_argument = self.arguments.len() + 1;
 
                     let search_conditions: Vec<String> = valid_search_columns
                         .iter()
-                        .map(|column| {
+                        .enumerate()
+                        .map(|(idx, column)| {
                             let table_column = self.dialect.quote_identifier(column);
-                            let placeholder = self.dialect.placeholder(next_argument);
+                            let placeholder =
+                                self.dialect.placeholder(self.arguments.len() + idx + 1);
                             format!("LOWER({}) LIKE LOWER({})", table_column, placeholder)
                         })
                         .collect();
@@ -108,7 +109,9 @@ where
                     if !search_conditions.is_empty() {
                         self.conditions
                             .push(format!("({})", search_conditions.join(" OR ")));
-                        self.arguments.add(pattern).unwrap_or_default();
+                        for _ in 0..valid_search_columns.len() {
+                            self.arguments.add(pattern.clone()).unwrap_or_default();
+                        }
                     }
                 }
             }

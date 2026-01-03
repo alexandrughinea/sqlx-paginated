@@ -440,14 +440,10 @@ where
         main_sql.push_str(&self.build_order_clause());
         main_sql.push_str(&self.build_limit_offset_clause());
 
-        // For SQLite, we need to execute queries in a way that ensures
-        // the SQL strings and arguments have compatible lifetimes
         let (total, total_pages, pagination) = if self.totals_count_enabled {
             let (_, count_arguments) = (self.build_query_fn)(params_ref);
             let pagination_arguments = self.params.pagination.clone();
             let count_sql_str = count_sql.as_ref().unwrap();
-
-            // Execute count query - SQL string and arguments are both in scope
             let count: i64 = sqlx::query_scalar_with(count_sql_str, count_arguments)
                 .fetch_one(pool)
                 .await?;
@@ -466,8 +462,6 @@ where
             (None, None, None)
         };
 
-        // Execute main query - both main_sql and main_arguments are in scope
-        // The lifetime 'q from params_ref ensures compatibility
         let records = sqlx::query_as_with::<sqlx::Sqlite, T, _>(&main_sql, main_arguments)
             .fetch_all(pool)
             .await?;

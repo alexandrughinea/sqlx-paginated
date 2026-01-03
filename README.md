@@ -21,6 +21,7 @@ A blazingly fast, type-safe, fluid query builder for dynamic APIs, offering seam
 - [Installation](#installation)
 - [Quick start](#quick-start)
   - [Basic usage](#basic-usage)
+  - [Examples](#examples)
   - [Response example](#response-example)
 - [API reference](#api-reference)
   - [Pagination parameters](#pagination-parameters)
@@ -241,6 +242,27 @@ async fn get_users(pool: &SqlitePool) -> Result<PaginatedResponse<User>, sqlx::E
     // paginated_query_as!(User, Sqlite, "SELECT * FROM users")
 }
 ```
+
+### Examples
+
+#### Complete working example
+
+See **[examples/sqlx-paginated-sqlite-example](examples/sqlx-paginated-sqlite-example/)** for a complete working REST API demonstrating:
+- Actix-web integration with SQLite
+- User and product endpoints with full CRUD operations
+- Migrations and seed data
+- Bruno API collection for testing
+- Production-ready error handling
+
+Run with: `cd examples/sqlx-paginated-sqlite-example && cargo run`
+
+#### Query building code examples
+
+For detailed query building patterns, see **[src/paginated_query_as/examples](src/paginated_query_as/examples/)**:
+
+- **[query_filters_examples.rs](src/paginated_query_as/examples/query_filters_examples.rs)** - Examples of all filter operators including comparison operators, IN/NOT IN, NULL checks, LIKE patterns, and complex filtering scenarios
+- **[query_builder_examples.rs](src/paginated_query_as/examples/query_builder_examples.rs)** - Query builder examples showing safe defaults and custom query construction for PostgreSQL and SQLite
+- **[paginated_query_builder_advanced_examples.rs](src/paginated_query_as/examples/paginated_query_builder_advanced_examples.rs)** - Advanced query builder usage with custom conditions and protection disabling
 
 ### Response example
 ```json

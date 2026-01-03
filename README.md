@@ -606,10 +606,10 @@ GET /v1/internal/users
 ### Query pattern optimization
 | Query pattern | Impact | Recommendation |
 |--------------|---------|----------------|
-| SELECT * | ❌ High impact | Specify needed columns |
-| Large text columns | ❌ High impact | Use separate detail endpoint |
-| Computed columns | ⚠️ Medium impact | Cache if possible |
-| JSON aggregation | ⚠️ Medium impact | Limit array size |
+| SELECT * | High impact | Specify needed columns |
+| Large text columns | High impact | Use separate detail endpoint |
+| Computed columns | Medium impact | Cache if possible |
+| JSON aggregation | Medium impact | Limit array size |
 
 ### Recommended indexes
 ```sql
@@ -626,10 +626,10 @@ CREATE INDEX idx_users_metadata ON users USING gin(metadata);
 ### Pagination performance
 | Page size | Records | Performance impact |
 |-----------|---------|-------------------|
-| 1-10      | Optimal | ✅ Best           |
-| 11-50     | Good    | ✅ Good           |
-| 51-100    | Caution | ⚠️ Monitor        |
-| 100+      | Poor    | ❌ Not recommended |
+| 1-10      | Optimal | Best           |
+| 11-50     | Good    | Good           |
+| 51-100    | Caution | Monitor        |
+| 100+      | Poor    | Not recommended |
 
 
 ## Security features

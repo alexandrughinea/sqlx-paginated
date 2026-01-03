@@ -11,33 +11,10 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  SQLX_VERSION: 0.8.0
-  SQLX_FEATURES: "rustls,postgres"
-  APP_USER: postgres_user
-  APP_USER_PWD: postgres_user_password
-  APP_DB_NAME: rust-actix-postgres-multi-tenant
+  SQLX_VERSION: 0.8.6
+  SQLX_FEATURES: "rustls,postgres,sqlite"
 
 jobs:
-  test:
-    name: Test
-    runs-on: ubuntu-latest
-    steps:
-      # Downloads a copy of the code in your repository before running CI tests
-      - name: Check out repository code
-        # The uses keyword specifies that this step will run v4 of the actions/checkout action.
-        # This is an action that checks out your repository onto the runner, allowing you to run scripts or other actions against your code (such as build and test tools).
-        # You should use the checkout action any time your workflow will run against the repository's code.
-        uses: actions/checkout@v4
-
-      # This GitHub Action installs a Rust toolchain using rustup. It is designed for one-line concise usage and good defaults.
-      # It also takes care of caching intermediate build artifacts.
-      - name: Install the Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-
-      - name: Run tests
-        run: cargo test
-
-  # `fmt` container job
   fmt:
     name: Rustfmt
     runs-on: ubuntu-latest

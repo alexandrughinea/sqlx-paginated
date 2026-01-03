@@ -1,0 +1,161 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+  SQLX_VERSION: 0.8.6
+  SQLX_FEATURES: "rustls,postgres,sqlite"
+
+jobs:
+  sqlite-e2e:
+    name: SQLite E2E tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-sqlite-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run SQLite E2E tests
+        run: cargo test --test end_to_end --features sqlite
+
+  postgres-e2e:
+    name: PostgreSQL E2E tests
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: sqlx_paginated_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/sqlx_paginated_test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-postgres-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Wait for PostgreSQL to be ready
+        run: |
+          until pg_isready -h localhost -p 5432 -U postgres; do
+            echo "Waiting for PostgreSQL to be ready..."
+            sleep 2
+          done
+
+      - name: Run PostgreSQL E2E tests
+        run: cargo test --test end_to_end --features postgres -- --ignored --test-threads=1
+
+  integration:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-integration-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run integration tests
+        run: cargo test --test integration
+
+  unit-tests:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-unit-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run unit tests
+        run: cargo test --lib
+
+  test-summary:
+    name: Test summary
+    runs-on: ubuntu-latest
+    needs: [sqlite-e2e, postgres-e2e, integration, unit-tests]
+    if: always()
+    steps:
+      - name: Check test results
+        run: |
+          if [[ "${{ needs.sqlite-e2e.result }}" != "success" ]] || \
+             [[ "${{ needs.postgres-e2e.result }}" != "success" ]] || \
+             [[ "${{ needs.integration.result }}" != "success" ]] || \
+             [[ "${{ needs.unit-tests.result }}" != "success" ]]; then
+            echo "One or more test jobs failed"
+            exit 1
+          fi
+          echo "All tests passed successfully!"
+

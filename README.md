@@ -7,44 +7,44 @@
 
 A blazingly fast, type-safe, fluid query builder for dynamic APIs, offering seamless pagination, sorting and dynamic filtering on top of [SQLx](https://docs.rs/sqlx/latest/sqlx).
 
-## Table of Contents
+## Table of contents
 - [Features](#features)
-  - [Core Capabilities](#core-capabilities)
-  - [Technical Features](#technical-features)
-  - [Query Features](#query-features)
-- [Database Support](#database-support)
-  - [Current vs Planned Support](#current-vs-planned-support)
-- [Market Analysis](#market-analysis)
-  - [Ecosystem Gaps](#ecosystem-gaps)
-  - [Unique Selling Points](#unique-selling-points)
-  - [Target Audience](#target-audience)
+  - [Core capabilities](#core-capabilities)
+  - [Technical features](#technical-features)
+  - [Query features](#query-features)
+- [Database support](#database-support)
+  - [Current vs planned support](#current-vs-planned-support)
+- [Market analysis](#market-analysis)
+  - [Ecosystem gaps](#ecosystem-gaps)
+  - [Unique selling points](#unique-selling-points)
+  - [Target audience](#target-audience)
 - [Installation](#installation)
-- [Quick Start](#quick-start)
-  - [Basic Usage](#basic-usage)
-  - [Response Example](#response-example)
-- [API Reference](#api-reference)
-  - [Pagination Parameters](#pagination-parameters)
-  - [Sort Parameters](#sort-parameters)
-  - [Search Parameters](#search-parameters)
-  - [Date Range Parameters](#date-range-parameters)
-  - [Filtering Parameters](#filtering-parameters)
-- [Query Examples](#query-examples)
+- [Quick start](#quick-start)
+  - [Basic usage](#basic-usage)
+  - [Response example](#response-example)
+- [API reference](#api-reference)
+  - [Pagination parameters](#pagination-parameters)
+  - [Sort parameters](#sort-parameters)
+  - [Search parameters](#search-parameters)
+  - [Date range parameters](#date-range-parameters)
+  - [Filtering parameters](#filtering-parameters)
+- [Query examples](#query-examples)
   - [Combined search, sort, date range, pagination and filter](#combined-search-sort-date-range-pagination-and-custom-filter)
-  - [Date Range combined with two other filters](#date-range-filter-combined-with-two-other-custom-filters)
-- [Performance Considerations](#performance-considerations)
-  - [Query Pattern Optimization](#query-pattern-optimization)
-  - [Recommended Indexes](#recommended-indexes)
-  - [Pagination Performance](#pagination-performance)
-- [Security Features](#security-features)
-  - [Input Sanitization](#input-sanitization)
-  - [Protected Patterns](#protected-patterns)
+  - [Date range combined with two other filters](#date-range-filter-combined-with-two-other-custom-filters)
+- [Performance considerations](#performance-considerations)
+  - [Query pattern optimization](#query-pattern-optimization)
+  - [Recommended indexes](#recommended-indexes)
+  - [Pagination performance](#pagination-performance)
+- [Security features](#security-features)
+  - [Input sanitization](#input-sanitization)
+  - [Protected patterns](#protected-patterns)
 - [Contributing](#contributing)
 - [License](#license)
 
 ## Features
 
-### Core Capabilities
-- Full-text search with column specification
+### Core capabilities
+- Full-text search with multi-column specification
 - Smart pagination with customizable page size
 - Dynamic sorting on any column
 - Flexible filtering system 
@@ -53,13 +53,13 @@ A blazingly fast, type-safe, fluid query builder for dynamic APIs, offering seam
 - High performance
 - SQL injection protection
 
-### Technical Features
+### Technical features
 - Builder patterns for query parameters and query construction
 - Graceful error handling
 - Logging with tracing (if enabled)
 - Macro and function syntax support
 
-### Query Features
+### Query features
 - Case-insensitive search
 - Multiple column search
 - Complex filtering conditions
@@ -68,19 +68,19 @@ A blazingly fast, type-safe, fluid query builder for dynamic APIs, offering seam
 - Customizable page size
 - Result count optimization (opt-out of total records lookup ahead)
 
-## Database Support
+## Database support
 
-### Current vs Planned Support
-| Database    | Status      | Version | Features                  | Notes                                       |
-|-------------|-------------|---------|---------------------------|---------------------------------------------|
-| PostgreSQL  | ✅ Supported | 12+     | All features supported    | Production ready                            |
-| SQLite      | 🚧 Testing  | 3.35+   | All features being tested | Testing                                     |
-| MySQL       | 🚧 Planned  | 8.0+    | Core features planned     | On roadmap, development starting in Q2 2026 |
+### Current vs planned support
+| Database    | Status   | Version | Features                 | Notes                                       |
+|-------------|----------|---------|--------------------------|---------------------------------------------|
+| PostgreSQL  | Supported | 12+     | All features supported   | Stable                                      |
+| SQLite      | Testing  | 3.35+   | All features supported | Stable                                     |
+| MySQL       | Planned | 8.0+    | Core features planned    | On roadmap, development starting in Q2 2026 |
 
 
-## Market Analysis
+## Market analysis
 
-### Ecosystem Gaps
+### Ecosystem gaps
 1. **Query builders**
    - Diesel: Full ORM, can be heavyweight
    - SeaQuery: Generic and can be verbose
@@ -91,9 +91,9 @@ A blazingly fast, type-safe, fluid query builder for dynamic APIs, offering seam
    - Automatic type casting
    - Typesafe search/filter/sort/pagination capabilities
 
-### Unique Selling Points
+### Unique selling points
 
-1. **Quick Web Framework Integration with minimal footprint**
+1. **Quick web framework integration with minimal footprint**
 
 [Actix-web](https://actix.rs/) handler example:
 ```rust
@@ -112,7 +112,7 @@ async fn list_users(web::Query(params): web::Query<FlatQueryParams>) -> impl Res
 }
 ```
 
-2. **Type Safety & Ergonomics for parameter configuration**
+2. **Type safety & ergonomics for parameter configuration**
 ```rust
 let params = QueryParamsBuilder::<User>::new()
     .with_pagination(1, 10)
@@ -121,7 +121,7 @@ let params = QueryParamsBuilder::<User>::new()
     .build();
 ```
 
-3. **Advanced Builder Patterns**
+3. **Advanced builder patterns**
 - Optional fluent API for query parameters (QueryParams) which allow defining search, search location, date filtering, ordering, and custom filtering.
 - Fluent API for the entire supported feature set, more here: [advanced example](src/paginated_query_as/examples/paginated_query_builder_advanced_examples.rs)
 
@@ -147,7 +147,7 @@ let params = QueryParamsBuilder::<User>::new()
 ```
 
 
-### Target Audience
+### Target audience
 1. **Primary users**
    - Rust web developers or API teams
    - Teams needing quick and secure query building
@@ -156,6 +156,7 @@ let params = QueryParamsBuilder::<User>::new()
 
 2. **Use cases**
    - REST APIs with pagination
+   - Complex backend filtering
    - Admin panels
    - Data exploration interfaces
 
@@ -181,9 +182,9 @@ sqlx_paginated = { version = "0.2.33", features = ["sqlite"] }
 sqlx_paginated = { version = "0.2.33", features = ["postgres", "sqlite"] }
 ```
 
-## Quick Start
+## Quick start
 
-### Basic Usage
+### Basic usage
 
 **PostgreSQL:**
 ```rust
@@ -241,7 +242,7 @@ async fn get_users(pool: &SqlitePool) -> Result<PaginatedResponse<User>, sqlx::E
 }
 ```
 
-### Response Example
+### Response example
 ```json
 {
   "records": [
@@ -260,16 +261,16 @@ async fn get_users(pool: &SqlitePool) -> Result<PaginatedResponse<User>, sqlx::E
 }
 ```
 
-## API Reference
+## API reference
 
-### Parameter Overview
+### Parameter overview
 
-| Feature | HTTP Parameters | Builder Method |
+| Feature | HTTP parameters | Builder method |
 |---------|----------------|----------------|
 | Pagination | `page`, `page_size` | `.with_pagination(page, size)` |
 | Sorting | `sort_column`, `sort_direction` | `.with_sort(column, direction)` |
 | Search | `search`, `search_columns` | `.with_search(term, columns)` |
-| Date Range | `date_after`, `date_before`, `date_column` | `.with_date_range(after, before, column)` |
+| Date range | `date_after`, `date_before`, `date_column` | `.with_date_range(after, before, column)` |
 | Filters | `field=value`, `field[op]=value` | `.with_filter_operator(field, operator, value)` |
 
 ### Pagination
@@ -326,7 +327,7 @@ WHERE (LOWER("first_name") LIKE LOWER('%john%')
     OR LOWER("email") LIKE LOWER('%john%'))
 ```
 
-### Date Range
+### Date range
 
 | Parameter | Type | Default | Format | Description |
 |-----------|------|---------|--------|-------------|
@@ -347,26 +348,26 @@ let end = DateTime::parse_from_rfc3339("2024-12-31T23:59:59Z").unwrap().into();
 .with_date_range(Some(start), Some(end), Some("created_at"))
 ```
 
-### Filter Operators
+### Filter operators
 
-#### Operator Reference
+#### Operator reference
 
-| Operator | HTTP Syntax | Rust Method | SQL Output |
+| Operator | HTTP syntax | Rust method | SQL output |
 |----------|-------------|-------------|------------|
 | Equal | `field=value` | `.with_filter("field", Some("value"))` | `field = $1` |
-| Not Equal | `field[ne]=value` | `.with_filter_operator("field", NotEqual, "value")` | `field != $1` |
-| Greater Than | `field[gt]=value` | `.with_filter_operator("field", GreaterThan, "value")` | `field > $1` |
-| Greater or Equal | `field[gte]=value` | `.with_filter_operator("field", GreaterOrEqual, "value")` | `field >= $1` |
-| Less Than | `field[lt]=value` | `.with_filter_operator("field", LessThan, "value")` | `field < $1` |
-| Less or Equal | `field[lte]=value` | `.with_filter_operator("field", LessOrEqual, "value")` | `field <= $1` |
+| Not equal | `field[ne]=value` | `.with_filter_operator("field", NotEqual, "value")` | `field != $1` |
+| Greater than | `field[gt]=value` | `.with_filter_operator("field", GreaterThan, "value")` | `field > $1` |
+| Greater or equal | `field[gte]=value` | `.with_filter_operator("field", GreaterOrEqual, "value")` | `field >= $1` |
+| Less than | `field[lt]=value` | `.with_filter_operator("field", LessThan, "value")` | `field < $1` |
+| Less or equal | `field[lte]=value` | `.with_filter_operator("field", LessOrEqual, "value")` | `field <= $1` |
 | IN | `field[in]=a,b,c` | `.with_filter_in("field", vec!["a","b","c"])` | `field IN ($1,$2,$3)` |
 | NOT IN | `field[nin]=a,b` | `.with_filter_not_in("field", vec!["a","b"])` | `field NOT IN ($1,$2)` |
-| IS NULL | `field[is_null]=` | `.with_filter_null("field", true)` | `field IS NULL` |
-| IS NOT NULL | `field[is_not_null]=` | `.with_filter_null("field", false)` | `field IS NOT NULL` |
+| Is null | `field[is_null]=` | `.with_filter_null("field", true)` | `field IS NULL` |
+| Is not null | `field[is_not_null]=` | `.with_filter_null("field", false)` | `field IS NOT NULL` |
 | LIKE | `field[like]=%pattern%` | `.with_filter_like("field", "%pattern%")` | `field LIKE $1` |
-| NOT LIKE | `field[nlike]=%pattern%` | `.with_filter_not_like("field", "%pattern%")` | `field NOT LIKE $1` |
+| Not like | `field[nlike]=%pattern%` | `.with_filter_not_like("field", "%pattern%")` | `field NOT LIKE $1` |
 
-#### HTTP Examples
+#### HTTP examples
 
 ```
 GET /products?price[gte]=10&price[lte]=100
@@ -375,7 +376,7 @@ GET /users?deleted_at[is_null]=&email[is_not_null]=
 GET /users?email[like]=%@company.com
 ```
 
-#### Rust Examples
+#### Rust examples
 
 ```rust
 use sqlx_paginated::{QueryParamsBuilder, QueryFilterOperator};
@@ -406,7 +407,7 @@ QueryParamsBuilder::<Product>::new()
     .build()
 ```
 
-### Web Framework Integration
+### Web framework integration
 
 **[Actix-web](https://actix.rs/):**
 ```rust
@@ -448,7 +449,7 @@ async fn list_users(
 }
 ```
 
-### Complete Example
+### Complete example
 
 **HTTP:**
 ```
@@ -477,7 +478,7 @@ let params = QueryParamsBuilder::<Product>::new()
     .build();
 ```
 
-## Query Examples
+## Query examples
 
 - Given the following `struct`, we can then perform search and filtering
 against its own fields. 
@@ -578,17 +579,17 @@ GET /v1/internal/users
 }
 ```
 
-## Performance Considerations
+## Performance considerations
 
-### Query Pattern Optimization
-| Query Pattern | Impact | Recommendation |
+### Query pattern optimization
+| Query pattern | Impact | Recommendation |
 |--------------|---------|----------------|
-| SELECT * | ❌ High Impact | Specify needed columns |
-| Large Text Columns | ❌ High Impact | Use separate detail endpoint |
-| Computed Columns | ⚠️ Medium Impact | Cache if possible |
-| JSON Aggregation | ⚠️ Medium Impact | Limit array size |
+| SELECT * | ❌ High impact | Specify needed columns |
+| Large text columns | ❌ High impact | Use separate detail endpoint |
+| Computed columns | ⚠️ Medium impact | Cache if possible |
+| JSON aggregation | ⚠️ Medium impact | Limit array size |
 
-### Recommended Indexes
+### Recommended indexes
 ```sql
 -- Text search
 CREATE INDEX idx_users_name_gin ON users USING gin(to_tsvector('english', name));
@@ -600,18 +601,18 @@ CREATE INDEX idx_users_confirmed_created ON users(confirmed, created_at);
 CREATE INDEX idx_users_metadata ON users USING gin(metadata);
 ```
 
-### Pagination Performance
-| Page Size | Records | Performance Impact |
+### Pagination performance
+| Page size | Records | Performance impact |
 |-----------|---------|-------------------|
 | 1-10      | Optimal | ✅ Best           |
 | 11-50     | Good    | ✅ Good           |
 | 51-100    | Caution | ⚠️ Monitor        |
-| 100+      | Poor    | ❌ Not Recommended |
+| 100+      | Poor    | ❌ Not recommended |
 
 
-## Security Features
+## Security features
 
-### Input Sanitization
+### Input sanitization
 - Search terms are cleaned and normalized
 - Parameter input values are trimmed and/or clamped against their defaults
 - Column names are validated against an allowlist:
@@ -620,7 +621,7 @@ CREATE INDEX idx_users_metadata ON users USING gin(metadata);
 - SQL injection patterns are blocked
 - System table access is prevented
 
-### Protected Patterns
+### Protected patterns
 - System schemas (pg_, information_schema)
 - System columns (oid, xmin, etc.)
 - SQL injection attempts

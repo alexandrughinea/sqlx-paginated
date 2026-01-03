@@ -5,14 +5,14 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/api/users?sort_column=created_at&sort_direction=descending
+  url: {{baseUrl}}/api/users?sort_column=created_at
   body: none
   auth: none
 }
 
 params:query {
   sort_column: created_at
-  sort_direction: descending
+  ~sort_direction: ascending
 }
 
 docs {
@@ -22,5 +22,3 @@ docs {
   - sort_column: Column to sort by
   - sort_direction: ascending or descending
 }
-
-

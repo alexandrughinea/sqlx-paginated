@@ -1,0 +1,17 @@
+meta {
+  name: List All Users
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/users
+  body: none
+  auth: none
+}
+
+docs {
+  Returns all users with default pagination (page 1, size 10).
+}
+
+

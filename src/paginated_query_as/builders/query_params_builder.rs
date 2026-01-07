@@ -4,6 +4,7 @@ use crate::paginated_query_as::internal::{
     DEFAULT_PAGE,
 };
 use crate::paginated_query_as::models::QuerySortDirection;
+use crate::paginated_query_as::models::{QueryFilterCondition, QueryFilterOperator};
 use crate::QueryParams;
 use chrono::{DateTime, Utc};
 use serde::Serialize;
@@ -187,7 +188,185 @@ impl<'q, T: Default + Serialize> QueryParamsBuilder<'q, T> {
         self
     }
 
-    /// Adds a single filter condition.
+    /// Adds a single filter condition with an operator.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - Column name to filter on
+    /// * `operator` - The comparison operator to use
+    /// * `value` - Value to filter by (required for most operators except IS NULL/IS NOT NULL)
+    ///
+    /// # Details
+    ///
+    /// Only adds the filter if the column exists in the model struct.
+    /// Logs a warning if tracing is enabled and the column is invalid.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use serde::{Serialize};
+    /// use sqlx_paginated::{QueryParamsBuilder, QueryFilterOperator};
+    ///
+    /// #[derive(Serialize, Default)]
+    /// struct Product {
+    ///     name: String,
+    ///     price: f64,
+    ///     stock: i32,
+    ///     status: String,
+    /// }
+    ///
+    /// let params = QueryParamsBuilder::<Product>::new()
+    ///     .with_filter_operator("price", QueryFilterOperator::GreaterThan, "10.00")
+    ///     .with_filter_operator("stock", QueryFilterOperator::LessOrEqual, "100")
+    ///     .with_filter_operator("status", QueryFilterOperator::NotEqual, "deleted")
+    ///     .build();
+    /// ```
+    pub fn with_filter_operator(
+        mut self,
+        key: impl Into<String>,
+        operator: QueryFilterOperator,
+        value: impl Into<String>,
+    ) -> Self {
+        let key = key.into();
+        let valid_fields = get_struct_field_names::<T>();
+
+        if valid_fields.contains(&key) {
+            self.query
+                .filters
+                .insert(key, QueryFilterCondition::new(operator, Some(value)));
+        } else {
+            #[cfg(feature = "tracing")]
+            tracing::warn!(column = %key, "Skipping invalid filter column");
+        }
+        self
+    }
+
+    /// Adds a filter condition for IS NULL or IS NOT NULL checks.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - Column name to filter on
+    /// * `is_null` - If true, checks IS NULL; if false, checks IS NOT NULL
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use serde::{Serialize};
+    /// use sqlx_paginated::{QueryParamsBuilder};
+    ///
+    /// #[derive(Serialize, Default)]
+    /// struct User {
+    ///     name: String,
+    ///     deleted_at: Option<String>,
+    /// }
+    ///
+    /// let params = QueryParamsBuilder::<User>::new()
+    ///     .with_filter_null("deleted_at", true)  // IS NULL
+    ///     .build();
+    /// ```
+    pub fn with_filter_null(mut self, key: impl Into<String>, is_null: bool) -> Self {
+        let key = key.into();
+        let valid_fields = get_struct_field_names::<T>();
+
+        if valid_fields.contains(&key) {
+            let condition = if is_null {
+                QueryFilterCondition::is_null()
+            } else {
+                QueryFilterCondition::is_not_null()
+            };
+            self.query.filters.insert(key, condition);
+        } else {
+            #[cfg(feature = "tracing")]
+            tracing::warn!(column = %key, "Skipping invalid filter column");
+        }
+        self
+    }
+
+    /// Adds an IN filter condition with multiple values.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - Column name to filter on
+    /// * `values` - Vector of values to check against
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use serde::{Serialize};
+    /// use sqlx_paginated::{QueryParamsBuilder};
+    ///
+    /// #[derive(Serialize, Default)]
+    /// struct User {
+    ///     name: String,
+    ///     role: String,
+    /// }
+    ///
+    /// let params = QueryParamsBuilder::<User>::new()
+    ///     .with_filter_in("role", vec!["admin", "moderator", "user"])
+    ///     .build();
+    /// ```
+    pub fn with_filter_in(
+        mut self,
+        key: impl Into<String>,
+        values: Vec<impl Into<String>>,
+    ) -> Self {
+        let key = key.into();
+        let valid_fields = get_struct_field_names::<T>();
+
+        if valid_fields.contains(&key) {
+            self.query
+                .filters
+                .insert(key, QueryFilterCondition::in_list(values));
+        } else {
+            #[cfg(feature = "tracing")]
+            tracing::warn!(column = %key, "Skipping invalid filter column");
+        }
+        self
+    }
+
+    /// Adds a NOT IN filter condition with multiple values.
+    ///
+    /// # Arguments
+    ///
+    /// * `key` - Column name to filter on
+    /// * `values` - Vector of values to exclude
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use serde::{Serialize};
+    /// use sqlx_paginated::{QueryParamsBuilder};
+    ///
+    /// #[derive(Serialize, Default)]
+    /// struct User {
+    ///     name: String,
+    ///     role: String,
+    /// }
+    ///
+    /// let params = QueryParamsBuilder::<User>::new()
+    ///     .with_filter_not_in("role", vec!["banned", "suspended"])
+    ///     .build();
+    /// ```
+    pub fn with_filter_not_in(
+        mut self,
+        key: impl Into<String>,
+        values: Vec<impl Into<String>>,
+    ) -> Self {
+        let key = key.into();
+        let valid_fields = get_struct_field_names::<T>();
+
+        if valid_fields.contains(&key) {
+            self.query
+                .filters
+                .insert(key, QueryFilterCondition::not_in_list(values));
+        } else {
+            #[cfg(feature = "tracing")]
+            tracing::warn!(column = %key, "Skipping invalid filter column");
+        }
+        self
+    }
+
+    /// Adds a simple equality filter condition (backward compatible).
     ///
     /// # Arguments
     ///
@@ -198,6 +377,7 @@ impl<'q, T: Default + Serialize> QueryParamsBuilder<'q, T> {
     ///
     /// Only adds the filter if the column exists in the model struct.
     /// Logs a warning if tracing is enabled and the column is invalid.
+    /// This method maintains backward compatibility with the original API.
     ///
     /// # Examples
     ///
@@ -223,7 +403,11 @@ impl<'q, T: Default + Serialize> QueryParamsBuilder<'q, T> {
         let valid_fields = get_struct_field_names::<T>();
 
         if valid_fields.contains(&key) {
-            self.query.filters.insert(key, value.map(Into::into));
+            if let Some(val) = value {
+                self.query
+                    .filters
+                    .insert(key, QueryFilterCondition::equal(val));
+            }
         } else {
             #[cfg(feature = "tracing")]
             tracing::warn!(column = %key, "Skipping invalid filter column");
@@ -231,11 +415,11 @@ impl<'q, T: Default + Serialize> QueryParamsBuilder<'q, T> {
         self
     }
 
-    /// Adds multiple filter conditions from a HashMap.
+    /// Adds multiple filter conditions from a HashMap (backward compatible).
     ///
     /// # Arguments
     ///
-    /// * `filters` - HashMap of column names and their filter values
+    /// * `filters` - HashMap of column names and their filter values (equality only)
     ///
     /// # Details
     ///
@@ -275,7 +459,62 @@ impl<'q, T: Default + Serialize> QueryParamsBuilder<'q, T> {
             .extend(filters.into_iter().filter_map(|(key, value)| {
                 let key = key.into();
                 if valid_fields.contains(&key) {
-                    Some((key, value.map(Into::into)))
+                    value.map(|v| (key, QueryFilterCondition::equal(v)))
+                } else {
+                    #[cfg(feature = "tracing")]
+                    tracing::warn!(column = %key, "Skipping invalid filter column");
+                    None
+                }
+            }));
+
+        self
+    }
+
+    /// Adds multiple filter conditions with operators from a HashMap.
+    ///
+    /// # Arguments
+    ///
+    /// * `filters` - HashMap of column names and their FilterConditions
+    ///
+    /// # Details
+    ///
+    /// Only adds filters for columns that exist in the model struct.
+    /// Logs a warning if tracing is enabled and a column is invalid.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::collections::HashMap;
+    /// use serde::{Serialize};
+    /// use sqlx_paginated::{QueryParamsBuilder, QueryFilterCondition, QueryFilterOperator};
+    ///
+    /// #[derive(Serialize, Default)]
+    /// struct Product {
+    ///     name: String,
+    ///     price: f64,
+    ///     stock: i32,
+    /// }
+    ///
+    /// let mut filters = HashMap::new();
+    /// filters.insert("price", QueryFilterCondition::greater_than("10.00"));
+    /// filters.insert("stock", QueryFilterCondition::less_or_equal("100"));
+    ///
+    /// let params = QueryParamsBuilder::<Product>::new()
+    ///     .with_filter_conditions(filters)
+    ///     .build();
+    /// ```
+    pub fn with_filter_conditions(
+        mut self,
+        filters: HashMap<impl Into<String>, QueryFilterCondition>,
+    ) -> Self {
+        let valid_fields = get_struct_field_names::<T>();
+
+        self.query
+            .filters
+            .extend(filters.into_iter().filter_map(|(key, condition)| {
+                let key = key.into();
+                if valid_fields.contains(&key) {
+                    Some((key, condition))
                 } else {
                     #[cfg(feature = "tracing")]
                     tracing::warn!(column = %key, "Skipping invalid filter column");
@@ -510,15 +749,14 @@ mod tests {
             .build();
 
         assert!(params.filters.contains_key("status"));
-        assert_eq!(
-            params.filters.get("status").unwrap(),
-            &Some("active".to_string())
-        );
+        let status_filter = params.filters.get("status").unwrap();
+        assert_eq!(status_filter.operator, QueryFilterOperator::Equal);
+        assert_eq!(status_filter.value, Some("active".to_string()));
+
         assert!(params.filters.contains_key("category"));
-        assert_eq!(
-            params.filters.get("category").unwrap(),
-            &Some("test".to_string())
-        );
+        let category_filter = params.filters.get("category").unwrap();
+        assert_eq!(category_filter.operator, QueryFilterOperator::Equal);
+        assert_eq!(category_filter.value, Some("test".to_string()));
     }
 
     #[test]
@@ -572,14 +810,13 @@ mod tests {
             .with_filter("category", Some("test"))
             .build();
 
-        assert_eq!(
-            params.filters.get("status").unwrap(),
-            &Some("active".to_string())
-        );
-        assert_eq!(
-            params.filters.get("category").unwrap(),
-            &Some("test".to_string())
-        );
+        let status_filter = params.filters.get("status").unwrap();
+        assert_eq!(status_filter.operator, QueryFilterOperator::Equal);
+        assert_eq!(status_filter.value, Some("active".to_string()));
+
+        let category_filter = params.filters.get("category").unwrap();
+        assert_eq!(category_filter.operator, QueryFilterOperator::Equal);
+        assert_eq!(category_filter.value, Some("test".to_string()));
     }
 
     #[test]
@@ -593,9 +830,50 @@ mod tests {
         assert_eq!(params.pagination.page, 2);
         assert_eq!(params.pagination.page_size, 10);
         assert_eq!(params.search.search, Some("test".to_string()));
-        assert_eq!(
-            params.filters.get("status").unwrap(),
-            &Some("active".to_string())
-        );
+
+        let status_filter = params.filters.get("status").unwrap();
+        assert_eq!(status_filter.operator, QueryFilterOperator::Equal);
+        assert_eq!(status_filter.value, Some("active".to_string()));
+    }
+
+    #[test]
+    fn test_filter_operators() {
+        let params = QueryParamsBuilder::<TestModel>::new()
+            .with_filter_operator("title", QueryFilterOperator::Like, "%test%")
+            .with_filter_operator("status", QueryFilterOperator::NotEqual, "deleted")
+            .build();
+
+        let title_filter = params.filters.get("title").unwrap();
+        assert_eq!(title_filter.operator, QueryFilterOperator::Like);
+        assert_eq!(title_filter.value, Some("%test%".to_string()));
+
+        let status_filter = params.filters.get("status").unwrap();
+        assert_eq!(status_filter.operator, QueryFilterOperator::NotEqual);
+        assert_eq!(status_filter.value, Some("deleted".to_string()));
+    }
+
+    #[test]
+    fn test_filter_null() {
+        let params = QueryParamsBuilder::<TestModel>::new()
+            .with_filter_null("description", true)
+            .build();
+
+        let filter = params.filters.get("description").unwrap();
+        assert_eq!(filter.operator, QueryFilterOperator::IsNull);
+        assert_eq!(filter.value, None);
+    }
+
+    #[test]
+    fn test_filter_in() {
+        let params = QueryParamsBuilder::<TestModel>::new()
+            .with_filter_in("status", vec!["active", "pending", "approved"])
+            .build();
+
+        let filter = params.filters.get("status").unwrap();
+        assert_eq!(filter.operator, QueryFilterOperator::In);
+        assert_eq!(filter.value, Some("active,pending,approved".to_string()));
+
+        let values = filter.split_values();
+        assert_eq!(values, vec!["active", "pending", "approved"]);
     }
 }

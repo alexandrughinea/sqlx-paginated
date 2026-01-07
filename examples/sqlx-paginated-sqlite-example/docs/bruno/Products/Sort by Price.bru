@@ -1,0 +1,24 @@
+meta {
+  name: Sort by Price
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/products?sort_column=price&sort_direction=ascending
+  body: none
+  auth: none
+}
+
+params:query {
+  sort_column: price
+  sort_direction: ascending
+}
+
+docs {
+  Sort products by price in ascending order.
+  
+  sort_direction options: ascending, descending
+}
+
+

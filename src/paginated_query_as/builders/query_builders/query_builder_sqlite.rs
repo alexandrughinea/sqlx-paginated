@@ -1,11 +1,11 @@
 use crate::paginated_query_as::internal::{
-    get_struct_field_names, ColumnProtection, PostgresDialect,
+    get_struct_field_names, ColumnProtection, SqliteDialect,
 };
 use crate::QueryBuilder;
 use serde::Serialize;
 use std::marker::PhantomData;
 
-impl<T> Default for QueryBuilder<'_, T, sqlx::Postgres>
+impl<'q, T> Default for QueryBuilder<'q, T, sqlx::Sqlite>
 where
     T: Default + Serialize,
 {
@@ -14,18 +14,18 @@ where
     }
 }
 
-impl<T> QueryBuilder<'_, T, sqlx::Postgres>
+impl<'q, T> QueryBuilder<'q, T, sqlx::Sqlite>
 where
     T: Default + Serialize,
 {
     pub fn new() -> Self {
         Self {
             conditions: Vec::new(),
-            arguments: sqlx::postgres::PgArguments::default(),
+            arguments: sqlx::sqlite::SqliteArguments::default(),
             valid_columns: get_struct_field_names::<T>(),
-            protection: Some(ColumnProtection::default()),
+            protection: Some(ColumnProtection::for_sqlite()),
             protection_enabled: true,
-            dialect: Box::new(PostgresDialect),
+            dialect: Box::new(SqliteDialect),
             _phantom: PhantomData,
         }
     }

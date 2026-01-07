@@ -1,0 +1,11 @@
+{
+  "version": "1",
+  "name": "sqlx-paginated-sqlite-example",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}
+
+

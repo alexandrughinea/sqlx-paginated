@@ -1,4 +1,9 @@
+#[cfg(feature = "postgres")]
 use crate::paginated_query_as::internal::protection::COLUMN_PROTECTION_BLOCKED_POSTGRES;
+
+#[cfg(feature = "sqlite")]
+use crate::paginated_query_as::internal::protection::COLUMN_PROTECTION_BLOCKED_SQLITE;
+
 use std::collections::HashSet;
 
 /// Protects columns against SQL injection and system table access
@@ -11,9 +16,18 @@ pub struct ColumnProtection {
 
 impl Default for ColumnProtection {
     fn default() -> Self {
-        let mut protection = Self::new();
-        protection.add_default_blocks();
-        protection
+        #[cfg(feature = "postgres")]
+        {
+            Self::for_postgres()
+        }
+        #[cfg(all(feature = "sqlite", not(feature = "postgres")))]
+        {
+            Self::for_sqlite()
+        }
+        #[cfg(not(any(feature = "postgres", feature = "sqlite")))]
+        {
+            Self::new()
+        }
     }
 }
 
@@ -26,12 +40,28 @@ impl ColumnProtection {
         }
     }
 
-    fn add_default_blocks(&mut self) {
-        self.blocked_patterns.extend(
+    /// Creates protection with Postgres-specific blocked patterns
+    #[cfg(feature = "postgres")]
+    pub fn for_postgres() -> Self {
+        let mut protection = Self::new();
+        protection.blocked_patterns.extend(
             COLUMN_PROTECTION_BLOCKED_POSTGRES
                 .iter()
                 .map(|&s| s.to_string()),
         );
+        protection
+    }
+
+    #[cfg(feature = "sqlite")]
+    /// Creates protection with SQLite-specific blocked patterns
+    pub fn for_sqlite() -> Self {
+        let mut protection = Self::new();
+        protection.blocked_patterns.extend(
+            COLUMN_PROTECTION_BLOCKED_SQLITE
+                .iter()
+                .map(|&s| s.to_string()),
+        );
+        protection
     }
 
     #[allow(dead_code)]
@@ -91,10 +121,11 @@ mod tests {
     use super::*;
 
     #[test]
+    #[cfg(feature = "postgres")]
     fn test_default_initialization() {
         let protection = ColumnProtection::default();
 
-        // Should block system tables/columns by default
+        // Should block system tables/columns by default (Postgres)
         assert!(!protection.is_safe("pg_table"));
         assert!(!protection.is_safe("information_schema.tables"));
         assert!(!protection.is_safe("pg_catalog.pg_class"));
@@ -108,6 +139,57 @@ mod tests {
         assert!(protection.is_safe("user_id"));
         assert!(protection.is_safe("email_address"));
         assert!(protection.is_safe("first_name"));
+    }
+
+    #[test]
+    #[cfg(feature = "postgres")]
+    fn test_postgres_specific_protection() {
+        let protection = ColumnProtection::for_postgres();
+
+        // Should block Postgres system tables
+        assert!(!protection.is_safe("pg_stat_activity"));
+        assert!(!protection.is_safe("pg_catalog"));
+        assert!(!protection.is_safe("information_schema.tables"));
+
+        // Should block Postgres system columns
+        assert!(!protection.is_safe("xmin"));
+        assert!(!protection.is_safe("xmax"));
+        assert!(!protection.is_safe("ctid"));
+        assert!(!protection.is_safe("tableoid"));
+
+        // Should allow regular columns
+        assert!(protection.is_safe("user_id"));
+        assert!(protection.is_safe("created_at"));
+    }
+
+    #[test]
+    #[cfg(feature = "sqlite")]
+    fn test_sqlite_specific_protection() {
+        let protection = ColumnProtection::for_sqlite();
+
+        // Should block SQLite system tables
+        assert!(!protection.is_safe("sqlite_master"));
+        assert!(!protection.is_safe("sqlite_schema"));
+        assert!(!protection.is_safe("sqlite_temp_master"));
+        assert!(!protection.is_safe("sqlite_sequence"));
+
+        // Should block SQLite internal columns
+        assert!(!protection.is_safe("rowid"));
+        assert!(!protection.is_safe("_rowid_"));
+
+        // Should block SQLite internal prefixes
+        assert!(!protection.is_safe("sqlite_autoindex"));
+        assert!(!protection.is_safe("sqlite_stat1"));
+
+        // Should allow regular columns
+        assert!(protection.is_safe("user_id"));
+        assert!(protection.is_safe("created_at"));
+        assert!(protection.is_safe("email"));
+
+        // Should NOT block Postgres-specific patterns (different database)
+        assert!(protection.is_safe("pg_table"));
+        assert!(protection.is_safe("xmin"));
+        assert!(protection.is_safe("ctid"));
     }
 
     #[test]

@@ -1,0 +1,24 @@
+meta {
+  name: Search Products
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/products?search=laptop&search_columns=name,description
+  body: none
+  auth: none
+}
+
+params:query {
+  search: laptop
+  search_columns: name,description
+}
+
+docs {
+  Search for "laptop" in name and description fields.
+  
+  Full-text search across specified columns.
+}
+
+

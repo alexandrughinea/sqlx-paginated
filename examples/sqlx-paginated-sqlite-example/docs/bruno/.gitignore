@@ -1,0 +1,5 @@
+# Bruno ignores
+node_modules
+.env
+
+

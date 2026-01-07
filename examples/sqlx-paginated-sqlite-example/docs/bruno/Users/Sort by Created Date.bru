@@ -1,0 +1,24 @@
+meta {
+  name: Sort by Created Date
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/users?sort_column=created_at
+  body: none
+  auth: none
+}
+
+params:query {
+  sort_column: created_at
+  ~sort_direction: ascending
+}
+
+docs {
+  Sort users by creation date in descending order.
+  
+  Parameters:
+  - sort_column: Column to sort by
+  - sort_direction: ascending or descending
+}

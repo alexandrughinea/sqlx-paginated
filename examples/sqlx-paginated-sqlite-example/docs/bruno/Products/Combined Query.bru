@@ -1,0 +1,35 @@
+meta {
+  name: Combined Query
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/api/products?sort_direction=ascending&page=1&page_size=10&search=UHD&search_columns=description
+  body: none
+  auth: none
+}
+
+params:query {
+  sort_direction: ascending
+  page: 1
+  page_size: 10
+  search: UHD
+  search_columns: description
+  ~price[gte]: 100
+  ~stock[gt]: 0
+  ~sort_column: name
+  ~category: accessories
+}
+
+docs {
+  Complex query combining multiple features:
+  - Search: "laptop" in product names/descriptions
+  - Filter: computers category
+  - Filter: price >= $100
+  - Filter: stock > 0
+  - Sort: by price ascending
+  - Pagination: page 1, 10 items per page
+  
+  This demonstrates all sqlx-paginated features working together.
+}

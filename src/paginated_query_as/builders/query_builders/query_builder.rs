@@ -1,4 +1,5 @@
-use crate::paginated_query_as::internal::{quote_identifier, ColumnProtection, QueryDialect};
+use crate::paginated_query_as::internal::{ColumnProtection, QueryDialect};
+use crate::paginated_query_as::models::{QueryFilterCondition, QueryFilterOperator};
 use crate::QueryParams;
 use chrono::{DateTime, Utc};
 use serde::Serialize;
@@ -93,21 +94,29 @@ where
 
                 if !valid_search_columns.is_empty() && !search.trim().is_empty() {
                     let pattern = format!("%{}%", search);
-                    let next_argument = self.arguments.len() + 1;
+                    let use_lower = search.is_ascii();
 
                     let search_conditions: Vec<String> = valid_search_columns
                         .iter()
-                        .map(|column| {
+                        .enumerate()
+                        .map(|(idx, column)| {
                             let table_column = self.dialect.quote_identifier(column);
-                            let placeholder = self.dialect.placeholder(next_argument);
-                            format!("LOWER({}) LIKE LOWER({})", table_column, placeholder)
+                            let placeholder =
+                                self.dialect.placeholder(self.arguments.len() + idx + 1);
+                            if use_lower {
+                                format!("LOWER({}) LIKE LOWER({})", table_column, placeholder)
+                            } else {
+                                format!("{} LIKE {}", table_column, placeholder)
+                            }
                         })
                         .collect();
 
                     if !search_conditions.is_empty() {
                         self.conditions
                             .push(format!("({})", search_conditions.join(" OR ")));
-                        self.arguments.add(pattern).unwrap_or_default();
+                        for _ in 0..valid_search_columns.len() {
+                            self.arguments.add(pattern.clone()).unwrap_or_default();
+                        }
                     }
                 }
             }
@@ -115,18 +124,19 @@ where
         self
     }
 
-    /// Adds equality filters to the query based on provided key-value pairs.
+    /// Adds filter conditions to the query with support for various operators.
     ///
     /// # Arguments
     ///
-    /// * `params` - Query parameters containing filters as key-value pairs
+    /// * `params` - Query parameters containing filters with operators
     ///
     /// # Details
     ///
     /// - Only applies filters for columns that exist and are considered safe
+    /// - Supports multiple operators: =, !=, >, >=, <, <=, IN, NOT IN, IS NULL, IS NOT NULL, LIKE, NOT LIKE
     /// - Automatically handles type casting based on the database dialect
     /// - Skips invalid columns with a warning when tracing is enabled
-    /// - Null or empty values are ignored
+    /// - For IN/NOT IN operators, comma-separated values are split into multiple parameters
     ///
     /// # Returns
     ///
@@ -137,39 +147,103 @@ where
     /// ```rust
     /// use sqlx::Postgres;
     /// use serde::{Serialize};
-    /// use sqlx_paginated::{QueryBuilder, QueryParamsBuilder};
+    /// use sqlx_paginated::{QueryBuilder, QueryParamsBuilder, QueryFilterOperator};
     ///
     /// #[derive(Serialize, Default)]
-    /// struct UserExample {
-    ///     name: String
+    /// struct Product {
+    ///     name: String,
+    ///     price: f64,
+    ///     stock: i32,
     /// }
     ///
-    /// let initial_params = QueryParamsBuilder::<UserExample>::new()
-    ///         .with_search("john", vec!["name", "email"])
+    /// let initial_params = QueryParamsBuilder::<Product>::new()
+    ///         .with_filter_operator("price", QueryFilterOperator::GreaterThan, "10.00")
+    ///         .with_filter_operator("stock", QueryFilterOperator::LessOrEqual, "100")
     ///         .build();
     ///
-    /// let query_builder = QueryBuilder::<UserExample, Postgres>::new()
+    /// let query_builder = QueryBuilder::<Product, Postgres>::new()
     ///     .with_filters(&initial_params)
     ///     .build();
     /// ```
     pub fn with_filters(mut self, params: &'q QueryParams<T>) -> Self {
-        for (key, value) in &params.filters {
+        for (key, condition) in &params.filters {
             if self.is_column_safe(key) {
-                if let Some(value) = value {
-                    let table_column = self.dialect.quote_identifier(key);
-                    let type_cast = self.dialect.type_cast(value);
-                    let next_argument = self.arguments.len() + 1;
-                    let placeholder = self.dialect.placeholder(next_argument);
-
-                    self.conditions
-                        .push(format!("{} = {}{}", table_column, placeholder, type_cast));
-                    self.arguments.add(value).unwrap_or_default();
-                }
+                self = self.apply_filter_condition(key, condition);
             } else {
                 #[cfg(feature = "tracing")]
                 tracing::warn!(column = %key, "Skipping invalid filter column");
             }
         }
+        self
+    }
+
+    /// Applies a single filter condition to the query.
+    ///
+    /// This is a helper method that handles the SQL generation for different operators.
+    fn apply_filter_condition(mut self, column: &str, condition: &'q QueryFilterCondition) -> Self {
+        let table_column = self.dialect.quote_identifier(column);
+
+        match &condition.operator {
+            QueryFilterOperator::IsNull => {
+                self.conditions.push(format!("{} IS NULL", table_column));
+            }
+            QueryFilterOperator::IsNotNull => {
+                self.conditions
+                    .push(format!("{} IS NOT NULL", table_column));
+            }
+            QueryFilterOperator::In | QueryFilterOperator::NotIn => {
+                if let Some(_value) = &condition.value {
+                    let values = condition.split_values();
+                    if !values.is_empty() {
+                        let mut placeholders = Vec::new();
+                        for val in values {
+                            let next_argument = self.arguments.len() + 1;
+                            let placeholder = self.dialect.placeholder(next_argument);
+                            let type_cast = self.dialect.type_cast(&val);
+                            placeholders.push(format!("{}{}", placeholder, type_cast));
+                            self.arguments.add(val).unwrap_or_default();
+                        }
+
+                        let operator = condition.operator.to_sql();
+                        self.conditions.push(format!(
+                            "{} {} ({})",
+                            table_column,
+                            operator,
+                            placeholders.join(", ")
+                        ));
+                    }
+                }
+            }
+            QueryFilterOperator::Like | QueryFilterOperator::NotLike => {
+                if let Some(value) = &condition.value {
+                    let next_argument = self.arguments.len() + 1;
+                    let placeholder = self.dialect.placeholder(next_argument);
+                    let operator = condition.operator.to_sql();
+
+                    self.conditions.push(format!(
+                        "LOWER({}) {} LOWER({})",
+                        table_column, operator, placeholder
+                    ));
+                    self.arguments.add(value).unwrap_or_default();
+                }
+            }
+            _ => {
+                // Handle all comparison operators: =, !=, >, >=, <, <=
+                if let Some(value) = &condition.value {
+                    let next_argument = self.arguments.len() + 1;
+                    let placeholder = self.dialect.placeholder(next_argument);
+                    let type_cast = self.dialect.type_cast(value);
+                    let operator = condition.operator.to_sql();
+
+                    self.conditions.push(format!(
+                        "{} {} {}{}",
+                        table_column, operator, placeholder, type_cast
+                    ));
+                    self.arguments.add(value).unwrap_or_default();
+                }
+            }
+        }
+
         self
     }
 
@@ -222,15 +296,19 @@ where
             if self.is_column_safe(date_column) {
                 if let Some(after) = params.date_range.date_after {
                     let next_argument = self.arguments.len() + 1;
+                    let table_column = self.dialect.quote_identifier(date_column);
+                    let placeholder = self.dialect.placeholder(next_argument);
                     self.conditions
-                        .push(format!("{} >= ${}", date_column, next_argument));
+                        .push(format!("{} >= {}", table_column, placeholder));
                     self.arguments.add(after).unwrap_or_default();
                 }
 
                 if let Some(before) = params.date_range.date_before {
                     let next_argument = self.arguments.len() + 1;
+                    let table_column = self.dialect.quote_identifier(date_column);
+                    let placeholder = self.dialect.placeholder(next_argument);
                     self.conditions
-                        .push(format!("{} <= ${}", date_column, next_argument));
+                        .push(format!("{} <= {}", table_column, placeholder));
                     self.arguments.add(before).unwrap_or_default();
                 }
             } else {
@@ -284,11 +362,13 @@ where
     ) -> Self {
         if self.is_column_safe(column) {
             let next_argument = self.arguments.len() + 1;
+            let table_column = self.dialect.quote_identifier(column);
+            let placeholder = self.dialect.placeholder(next_argument);
             self.conditions.push(format!(
-                "{} {} ${}",
-                quote_identifier(column),
+                "{} {} {}",
+                table_column,
                 condition.into(),
-                next_argument
+                placeholder
             ));
             let _ = self.arguments.add(value);
         } else {

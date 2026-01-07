@@ -1,0 +1,23 @@
+meta {
+  name: Filter by Confirmed
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/users?confirmed=true
+  body: none
+  auth: none
+}
+
+params:query {
+  confirmed: true
+}
+
+docs {
+  Filter users by confirmed status.
+  
+  Simple equality filter: field=value
+}
+
+

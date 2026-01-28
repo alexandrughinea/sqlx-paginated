@@ -168,19 +168,19 @@ Add to `Cargo.toml`:
 **For PostgreSQL:**
 ```toml
 [dependencies]
-sqlx_paginated = { version = "0.2.33", features = ["postgres"] }
+sqlx_paginated = { version = "0.3.0", features = ["postgres"] }
 ```
 
 **For SQLite:**
 ```toml
 [dependencies]
-sqlx_paginated = { version = "0.2.33", features = ["sqlite"] }
+sqlx_paginated = { version = "0.3.0", features = ["sqlite"] }
 ```
 
 **For both:**
 ```toml
 [dependencies]
-sqlx_paginated = { version = "0.2.33", features = ["postgres", "sqlite"] }
+sqlx_paginated = { version = "0.3.0", features = ["postgres", "sqlite"] }
 ```
 
 ## Quick start

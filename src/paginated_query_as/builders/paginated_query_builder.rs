@@ -282,28 +282,31 @@ where
         main_sql.push_str(&self.build_order_clause());
         main_sql.push_str(&self.build_limit_offset_clause());
 
-        let (total, total_pages, pagination) = if self.totals_count_enabled {
-            let (_, count_arguments) = (self.build_query_fn)(params_ref);
-            let pagination_arguments = self.params.pagination.clone();
-            let count_sql_str = count_sql.as_ref().unwrap();
+        let (total, total_pages, pagination) =
+            if let Some(count_sql_str) = count_sql.as_ref() {
+                let (_, count_arguments) = (self.build_query_fn)(params_ref);
+                let pagination_arguments = self.params.pagination.clone();
 
-            let count: i64 = sqlx::query_scalar_with(count_sql_str, count_arguments)
-                .fetch_one(pool)
-                .await?;
+                let count: i64 = sqlx::query_scalar_with(count_sql_str, count_arguments)
+                    .fetch_one(pool)
+                    .await?;
 
-            let available_pages = match count {
-                0 => 0,
-                _ => (count + pagination_arguments.page_size - 1) / pagination_arguments.page_size,
+                let available_pages = match count {
+                    0 => 0,
+                    _ => {
+                        (count + pagination_arguments.page_size - 1)
+                            / pagination_arguments.page_size
+                    }
+                };
+
+                (
+                    Some(count),
+                    Some(available_pages),
+                    Some(pagination_arguments),
+                )
+            } else {
+                (None, None, None)
             };
-
-            (
-                Some(count),
-                Some(available_pages),
-                Some(pagination_arguments),
-            )
-        } else {
-            (None, None, None)
-        };
 
         // For PostgreSQL, PgArguments doesn't have lifetime constraints
         let records = sqlx::query_as_with::<sqlx::Postgres, T, _>(&main_sql, main_arguments)
@@ -440,27 +443,31 @@ where
         main_sql.push_str(&self.build_order_clause());
         main_sql.push_str(&self.build_limit_offset_clause());
 
-        let (total, total_pages, pagination) = if self.totals_count_enabled {
-            let (_, count_arguments) = (self.build_query_fn)(params_ref);
-            let pagination_arguments = self.params.pagination.clone();
-            let count_sql_str = count_sql.as_ref().unwrap();
-            let count: i64 = sqlx::query_scalar_with(count_sql_str, count_arguments)
-                .fetch_one(pool)
-                .await?;
+        let (total, total_pages, pagination) =
+            if let Some(count_sql_str) = count_sql.as_ref() {
+                let (_, count_arguments) = (self.build_query_fn)(params_ref);
+                let pagination_arguments = self.params.pagination.clone();
 
-            let available_pages = match count {
-                0 => 0,
-                _ => (count + pagination_arguments.page_size - 1) / pagination_arguments.page_size,
+                let count: i64 = sqlx::query_scalar_with(count_sql_str, count_arguments)
+                    .fetch_one(pool)
+                    .await?;
+
+                let available_pages = match count {
+                    0 => 0,
+                    _ => {
+                        (count + pagination_arguments.page_size - 1)
+                            / pagination_arguments.page_size
+                    }
+                };
+
+                (
+                    Some(count),
+                    Some(available_pages),
+                    Some(pagination_arguments),
+                )
+            } else {
+                (None, None, None)
             };
-
-            (
-                Some(count),
-                Some(available_pages),
-                Some(pagination_arguments),
-            )
-        } else {
-            (None, None, None)
-        };
 
         let records = sqlx::query_as_with::<sqlx::Sqlite, T, _>(&main_sql, main_arguments)
             .fetch_all(pool)

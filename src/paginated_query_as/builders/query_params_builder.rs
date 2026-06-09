@@ -559,6 +559,7 @@ impl<'q, T: Default + Serialize> QueryParamsBuilder<'q, T> {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use crate::paginated_query_as::internal::{

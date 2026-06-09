@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::indexing_slicing)]
+
 use serde::Serialize;
 use sqlx_paginated::{QueryBuilder, QueryFilterCondition, QueryFilterOperator, QueryParamsBuilder};
 

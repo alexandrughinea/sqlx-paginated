@@ -1,10 +1,8 @@
 [advisories]
-db-path = "~/.cargo/advisory-db"
 db-urls = ["https://github.com/rustsec/advisory-db"]
-vulnerability = "deny"
-unmaintained = "warn"
-yanked = "warn"
-notice = "warn"
+# RUSTSEC-2023-0071: Marvin Attack in rsa v0.9.10 — transitive dep via sqlx-postgres.
+# No upstream fix is available as of 2026-06-09.
+ignore = ["RUSTSEC-2023-0071"]
 
 [licenses]
 unlicensed = "deny"

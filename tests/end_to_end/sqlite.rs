@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::indexing_slicing)]
+
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use sqlx::sqlite::{Sqlite, SqlitePool, SqlitePoolOptions};

@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::indexing_slicing)]
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::{PgPool, PgPoolOptions, Postgres};

@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 #[cfg(feature = "postgres")]
 use crate::paginated_query_as::QueryParamsBuilder;
 #[cfg(feature = "postgres")]

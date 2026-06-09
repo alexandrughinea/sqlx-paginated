@@ -50,6 +50,7 @@ where
     T: Default + Serialize,
 {
     let default_value = T::default();
+    let Ok(json_value) = serde_json::to_value(default_value) else {
         return vec![];
     };
 

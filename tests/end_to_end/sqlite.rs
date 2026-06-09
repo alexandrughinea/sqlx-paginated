@@ -458,7 +458,7 @@ async fn test_filter_greater_than() {
             .await
             .unwrap();
 
-    assert!(result.records.len() > 0);
+    assert!(!result.records.is_empty());
     assert!(result.records.iter().all(|p| p.price > 100.0));
 }
 
@@ -558,7 +558,7 @@ async fn test_combined_search_filter_sort_pagination() {
             .await
             .unwrap();
 
-    assert!(result.records.len() > 0);
+    assert!(!result.records.is_empty());
     assert!(result.records.iter().all(|p| p.status == "active"));
     assert!(result.records.iter().all(|p| p.price >= 50.0));
 
@@ -668,7 +668,7 @@ async fn test_disable_totals_count() {
             .await
             .unwrap();
 
-    assert!(result.records.len() > 0);
+    assert!(!result.records.is_empty());
     assert_eq!(result.total, None);
     assert_eq!(result.total_pages, None);
 }

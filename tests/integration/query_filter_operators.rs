@@ -282,7 +282,7 @@ mod sqlite_tests {
             .with_filters(&params)
             .build();
 
-        assert!(conditions.len() >= 1);
+        assert!(!conditions.is_empty());
         // SQLite uses ? placeholders
         assert!(conditions.iter().any(|c| c.contains("?")));
     }

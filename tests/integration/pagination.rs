@@ -102,7 +102,7 @@ mod postgres_tests {
             .with_search(&params)
             .build();
 
-        assert!(conditions.len() >= 1);
+        assert!(!conditions.is_empty());
     }
 
     #[test]

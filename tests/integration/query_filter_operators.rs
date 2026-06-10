@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::indexing_slicing)]
+
 use serde::Serialize;
 use sqlx_paginated::{QueryBuilder, QueryFilterCondition, QueryFilterOperator, QueryParamsBuilder};
 
@@ -282,7 +284,7 @@ mod sqlite_tests {
             .with_filters(&params)
             .build();
 
-        assert!(conditions.len() >= 1);
+        assert!(!conditions.is_empty());
         // SQLite uses ? placeholders
         assert!(conditions.iter().any(|c| c.contains("?")));
     }

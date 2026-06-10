@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, clippy::indexing_slicing)]
+
 use serde::Serialize;
 use sqlx_paginated::{QueryBuilder, QueryParamsBuilder, QuerySortDirection};
 
@@ -102,7 +104,7 @@ mod postgres_tests {
             .with_search(&params)
             .build();
 
-        assert!(conditions.len() >= 1);
+        assert!(!conditions.is_empty());
     }
 
     #[test]

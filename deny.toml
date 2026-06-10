@@ -1,0 +1,24 @@
+[advisories]
+db-urls = ["https://github.com/rustsec/advisory-db"]
+# RUSTSEC-2023-0071: Marvin Attack in rsa v0.9.10 — transitive dep via sqlx-postgres.
+# No upstream fix is available as of 2026-06-09.
+ignore = ["RUSTSEC-2023-0071"]
+
+[licenses]
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "Unicode-3.0",
+    "ISC",
+    "BSD-3-Clause",
+    "Zlib",
+    "CDLA-Permissive-2.0",
+]
+
+[bans]
+multiple-versions = "warn"
+
+[sources]
+unknown-registry = "warn"
+unknown-git = "warn"

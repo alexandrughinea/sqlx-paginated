@@ -50,7 +50,9 @@ where
     T: Default + Serialize,
 {
     let default_value = T::default();
-    let json_value = serde_json::to_value(default_value).unwrap();
+    let Ok(json_value) = serde_json::to_value(default_value) else {
+        return vec![];
+    };
 
     if let Value::Object(map) = json_value {
         map.keys().cloned().collect()
@@ -64,6 +66,7 @@ pub fn extract_digits_from_strings(val: impl Into<String>) -> String {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::indexing_slicing)]
 mod tests {
     use super::*;
     use crate::paginated_query_as::internal::DEFAULT_MIN_PAGE_SIZE;

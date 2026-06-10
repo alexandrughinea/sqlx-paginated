@@ -16,25 +16,25 @@ pub trait DatabaseQueryDefaults: Database {
     /// # Returns
     ///
     /// Returns a tuple of (conditions, arguments) to be used in the paginated query.
-    fn build_default_query<'p, T>(params: &'p QueryParams<T>) -> (Vec<String>, Self::Arguments<'p>)
+    fn build_default_query<T>(params: &QueryParams<T>) -> (Vec<String>, Self::Arguments)
     where
         T: Default + Serialize;
 }
 
 #[cfg(feature = "postgres")]
 impl DatabaseQueryDefaults for sqlx::Postgres {
-    fn build_default_query<'p, T>(params: &'p QueryParams<T>) -> (Vec<String>, Self::Arguments<'p>)
+    fn build_default_query<T>(params: &QueryParams<T>) -> (Vec<String>, Self::Arguments)
     where
         T: Default + Serialize,
     {
         use crate::paginated_query_as::examples::postgres_examples::build_query_with_safe_defaults;
-        build_query_with_safe_defaults::<T, sqlx::Postgres>(params)
+        build_query_with_safe_defaults::<T>(params)
     }
 }
 
 #[cfg(feature = "sqlite")]
 impl DatabaseQueryDefaults for sqlx::Sqlite {
-    fn build_default_query<'p, T>(params: &'p QueryParams<T>) -> (Vec<String>, Self::Arguments<'p>)
+    fn build_default_query<T>(params: &QueryParams<T>) -> (Vec<String>, Self::Arguments)
     where
         T: Default + Serialize,
     {

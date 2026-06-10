@@ -1,6 +1,6 @@
 [package]
 name = "sqlx-paginated"
-version = "0.3.2"
+version = "0.4.0"
 edition = "2021"
 authors = ["@alexandrughinea"]
 description = "A flexible, type-safe SQLx query builder for dynamic web APIs, offering seamless pagination, searching, filtering, and sorting."
@@ -19,8 +19,9 @@ default = ["postgres"]
 path = "src/lib.rs"
 
 [dependencies]
-sqlx = { version = "0.8", default-features = false, features = [
-    "runtime-tokio-rustls",
+sqlx = { version = "0.9.0", default-features = false, features = [
+    "runtime-tokio",
+    "tls-rustls",
     "macros",
     "postgres",
     "sqlite",

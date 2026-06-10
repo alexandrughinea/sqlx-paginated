@@ -8,7 +8,7 @@ use std::marker::PhantomData;
 
 pub struct QueryBuilder<'q, T, DB: Database> {
     pub conditions: Vec<String>,
-    pub arguments: DB::Arguments<'q>,
+    pub arguments: DB::Arguments,
     pub(crate) valid_columns: Vec<String>,
     pub(crate) protection: Option<ColumnProtection>,
     pub(crate) protection_enabled: bool,
@@ -447,7 +447,7 @@ where
     /// ```
     pub fn with_combined_conditions<F>(mut self, f: F) -> Self
     where
-        F: FnOnce(&mut QueryBuilder<T, DB>),
+        F: FnOnce(&mut QueryBuilder<'q, T, DB>),
     {
         f(&mut self);
         self
@@ -513,7 +513,7 @@ where
     ///     .with_search(&initial_params)
     ///     .build();
     /// ```
-    pub fn build(self) -> (Vec<String>, DB::Arguments<'q>) {
+    pub fn build(self) -> (Vec<String>, DB::Arguments) {
         (self.conditions, self.arguments)
     }
 }

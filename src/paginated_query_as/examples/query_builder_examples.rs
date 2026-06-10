@@ -5,15 +5,14 @@ use serde::Serialize;
 pub mod postgres_examples {
     use super::*;
     use sqlx::postgres::PgArguments;
-    use sqlx::{Database, Postgres};
+    use sqlx::Postgres;
 
     #[allow(dead_code)]
-    pub fn build_query_with_disabled_protection<'q, T, DB>(
+    pub fn build_query_with_disabled_protection<T>(
         params: &QueryParams<T>,
-    ) -> (Vec<String>, DB::Arguments<'q>)
+    ) -> (Vec<String>, PgArguments)
     where
         T: Default + Serialize,
-        DB: Database<Arguments<'q> = PgArguments>,
     {
         QueryBuilder::<T, Postgres>::new()
             .with_search(params)
@@ -24,12 +23,9 @@ pub mod postgres_examples {
     }
 
     #[allow(dead_code)]
-    pub fn build_query_with_safe_defaults<'q, T, DB>(
-        params: &QueryParams<T>,
-    ) -> (Vec<String>, DB::Arguments<'q>)
+    pub fn build_query_with_safe_defaults<T>(params: &QueryParams<T>) -> (Vec<String>, PgArguments)
     where
         T: Default + Serialize,
-        DB: Database<Arguments<'q> = PgArguments>,
     {
         QueryBuilder::<T, Postgres>::new()
             .with_search(params)
@@ -61,7 +57,7 @@ pub mod postgres_examples {
                 .with_search("XXX", vec!["description"])
                 .build();
 
-            let (conditions, _) = build_query_with_safe_defaults::<TestModel, Postgres>(&params);
+            let (conditions, _) = build_query_with_safe_defaults::<TestModel>(&params);
 
             assert!(!conditions.is_empty());
             assert!(conditions.iter().any(|c| c.contains("LOWER")));
@@ -74,7 +70,7 @@ pub mod postgres_examples {
                 .with_search("   ", vec!["name"])
                 .build();
 
-            let (conditions, _) = build_query_with_safe_defaults::<TestModel, Postgres>(&params);
+            let (conditions, _) = build_query_with_safe_defaults::<TestModel>(&params);
             assert!(!conditions.iter().any(|c| c.contains("LIKE")));
         }
     }
@@ -84,16 +80,16 @@ pub mod postgres_examples {
 pub mod sqlite_examples {
     use super::*;
     use sqlx::sqlite::SqliteArguments;
-    use sqlx::{Database, Sqlite};
+    use sqlx::Sqlite;
 
     #[allow(dead_code)]
-    pub fn build_query_with_safe_defaults<'q, T>(
-        params: &'q QueryParams<T>,
-    ) -> (Vec<String>, SqliteArguments<'q>)
+    pub fn build_query_with_safe_defaults<T>(
+        params: &QueryParams<T>,
+    ) -> (Vec<String>, SqliteArguments)
     where
         T: Default + Serialize,
     {
-        QueryBuilder::<'q, T, Sqlite>::new()
+        QueryBuilder::<T, Sqlite>::new()
             .with_search(params)
             .with_filters(params)
             .with_date_range(params)
@@ -101,14 +97,13 @@ pub mod sqlite_examples {
     }
 
     #[allow(dead_code)]
-    pub fn builder_new_query_with_disabled_protection_for_sqlite<'q, T, DB>(
-        params: &'q QueryParams<T>,
-    ) -> (Vec<String>, DB::Arguments<'q>)
+    pub fn builder_new_query_with_disabled_protection_for_sqlite<T>(
+        params: &QueryParams<T>,
+    ) -> (Vec<String>, SqliteArguments)
     where
         T: Default + Serialize,
-        DB: Database<Arguments<'q> = SqliteArguments<'q>>,
     {
-        QueryBuilder::<'q, T, Sqlite>::new()
+        QueryBuilder::<T, Sqlite>::new()
             .with_search(params)
             .with_filters(params)
             .with_date_range(params)
@@ -140,7 +135,7 @@ pub mod sqlite_examples {
                 .build();
 
             let (conditions, _) =
-                builder_new_query_with_disabled_protection_for_sqlite::<TestModel, Sqlite>(&params);
+                builder_new_query_with_disabled_protection_for_sqlite::<TestModel>(&params);
             assert!(!conditions.iter().any(|c| c.contains("LIKE")));
         }
     }

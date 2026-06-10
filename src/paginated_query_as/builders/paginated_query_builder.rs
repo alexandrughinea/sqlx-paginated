@@ -2,12 +2,13 @@ use crate::paginated_query_as::internal::quote_identifier;
 use crate::paginated_query_as::models::QuerySortDirection;
 use crate::{FlatQueryParams, PaginatedResponse, QueryParams};
 use serde::Serialize;
-use sqlx::{query::QueryAs, Database, Execute, Executor, FromRow, IntoArguments, Pool};
+use sqlx::{
+    query::QueryAs, AssertSqlSafe, Database, Execute, Executor, FromRow, IntoArguments, Pool,
+};
+use std::marker::PhantomData;
 
 type QueryBuilderFn<T, DB> = Box<
-    dyn for<'p> Fn(&'p QueryParams<T>) -> (Vec<String>, <DB as Database>::Arguments<'p>)
-        + Send
-        + Sync,
+    dyn for<'p> Fn(&'p QueryParams<T>) -> (Vec<String>, <DB as Database>::Arguments) + Send + Sync,
 >;
 
 pub struct PaginatedQueryBuilder<'q, T, DB, A>
@@ -15,10 +16,11 @@ where
     DB: Database,
     T: for<'r> FromRow<'r, <DB as Database>::Row> + Send + Unpin,
 {
-    query: QueryAs<'q, DB, T, A>,
+    base_sql: sqlx::SqlStr,
     params: QueryParams<'q, T>,
     totals_count_enabled: bool,
     build_query_fn: QueryBuilderFn<T, DB>,
+    _arguments: PhantomData<A>,
 }
 
 /// A builder for constructing and executing paginated queries.
@@ -41,8 +43,8 @@ impl<'q, T, DB, A> PaginatedQueryBuilder<'q, T, DB, A>
 where
     DB: Database,
     T: for<'r> FromRow<'r, <DB as Database>::Row> + Send + Unpin + Serialize + Default,
-    A: 'q + IntoArguments<'q, DB> + Send,
-    DB::Arguments<'q>: IntoArguments<'q, DB>,
+    A: IntoArguments<DB> + Send,
+    DB::Arguments: IntoArguments<DB>,
     for<'c> &'c Pool<DB>: Executor<'c, Database = DB>,
     usize: sqlx::ColumnIndex<<DB as Database>::Row>,
     i64: sqlx::Type<DB> + for<'r> sqlx::Decode<'r, DB> + Send + Unpin,
@@ -81,25 +83,21 @@ where
     /// ```
     pub fn new<F>(query: QueryAs<'q, DB, T, A>, build_query_fn: F) -> Self
     where
-        F: for<'p> Fn(&'p QueryParams<T>) -> (Vec<String>, DB::Arguments<'p>)
-            + Send
-            + Sync
-            + 'static,
+        F: for<'p> Fn(&'p QueryParams<T>) -> (Vec<String>, DB::Arguments) + Send + Sync + 'static,
     {
+        let base_sql = query.sql();
         Self {
-            query,
+            base_sql,
             params: FlatQueryParams::default().into(),
             totals_count_enabled: true,
             build_query_fn: Box::new(build_query_fn),
+            _arguments: PhantomData,
         }
     }
 
     pub fn with_query_builder<F>(mut self, build_query_fn: F) -> Self
     where
-        F: for<'p> Fn(&'p QueryParams<T>) -> (Vec<String>, DB::Arguments<'p>)
-            + Send
-            + Sync
-            + 'static,
+        F: for<'p> Fn(&'p QueryParams<T>) -> (Vec<String>, DB::Arguments) + Send + Sync + 'static,
     {
         self.build_query_fn = Box::new(build_query_fn);
         self
@@ -130,7 +128,7 @@ where
     ///
     /// Returns the SQL string for the base query wrapped in a CTE
     fn build_base_query(&self) -> String {
-        format!("WITH base_query AS ({})", self.query.sql())
+        format!("WITH base_query AS ({})", self.base_sql.as_str())
     }
 
     /// Builds the WHERE clause from the provided conditions.
@@ -181,7 +179,7 @@ where
         + Unpin
         + Serialize
         + Default,
-    A: 'q + IntoArguments<'q, sqlx::Postgres> + Send,
+    A: IntoArguments<sqlx::Postgres> + Send,
 {
     /// Creates a new `PaginatedQueryBuilder` for PostgreSQL with default settings.
     ///
@@ -211,9 +209,7 @@ where
     /// ```
     pub fn new_with_defaults(query: sqlx::query::QueryAs<'q, sqlx::Postgres, T, A>) -> Self {
         use crate::paginated_query_as::examples::postgres_examples::build_query_with_safe_defaults;
-        Self::new(query, |params| {
-            build_query_with_safe_defaults::<T, sqlx::Postgres>(params)
-        })
+        Self::new(query, |params| build_query_with_safe_defaults::<T>(params))
     }
 
     /// Executes the paginated query and returns the results.
@@ -286,9 +282,10 @@ where
             let (_, count_arguments) = (self.build_query_fn)(params_ref);
             let pagination_arguments = self.params.pagination.clone();
 
-            let count: i64 = sqlx::query_scalar_with(count_sql_str, count_arguments)
-                .fetch_one(pool)
-                .await?;
+            let count: i64 =
+                sqlx::query_scalar_with(AssertSqlSafe(count_sql_str.as_str()), count_arguments)
+                    .fetch_one(pool)
+                    .await?;
 
             let available_pages = match count {
                 0 => 0,
@@ -305,9 +302,10 @@ where
         };
 
         // For PostgreSQL, PgArguments doesn't have lifetime constraints
-        let records = sqlx::query_as_with::<sqlx::Postgres, T, _>(&main_sql, main_arguments)
-            .fetch_all(pool)
-            .await?;
+        let records =
+            sqlx::query_as_with::<sqlx::Postgres, T, _>(AssertSqlSafe(main_sql), main_arguments)
+                .fetch_all(pool)
+                .await?;
 
         Ok(PaginatedResponse {
             records,
@@ -326,7 +324,7 @@ where
         + Unpin
         + Serialize
         + Default,
-    A: 'q + IntoArguments<'q, sqlx::Sqlite> + Send,
+    A: IntoArguments<sqlx::Sqlite> + Send,
 {
     /// Creates a new `PaginatedQueryBuilder` for SQLite with default settings.
     ///
@@ -384,9 +382,7 @@ where
     ///
     /// # Implementation Note
     ///
-    /// This specialized implementation for SQLite handles lifetime requirements correctly.
-    /// SQLite's `SqliteArguments<'q>` requires that SQL strings live long enough, so this
-    /// implementation ensures all SQL strings are created and kept in scope before executing queries.
+    /// All SQL strings are built and kept in scope before executing queries.
     ///
     /// # Example
     ///
@@ -425,7 +421,6 @@ where
         let where_clause = self.build_where_clause(&conditions);
 
         // Build all SQL strings first and keep them in scope
-        // This ensures they live long enough for SqliteArguments<'q>
         let count_sql = if self.totals_count_enabled {
             Some(format!(
                 "{} SELECT COUNT(*) FROM base_query{}",
@@ -443,9 +438,10 @@ where
             let (_, count_arguments) = (self.build_query_fn)(params_ref);
             let pagination_arguments = self.params.pagination.clone();
 
-            let count: i64 = sqlx::query_scalar_with(count_sql_str, count_arguments)
-                .fetch_one(pool)
-                .await?;
+            let count: i64 =
+                sqlx::query_scalar_with(AssertSqlSafe(count_sql_str.as_str()), count_arguments)
+                    .fetch_one(pool)
+                    .await?;
 
             let available_pages = match count {
                 0 => 0,
@@ -461,9 +457,10 @@ where
             (None, None, None)
         };
 
-        let records = sqlx::query_as_with::<sqlx::Sqlite, T, _>(&main_sql, main_arguments)
-            .fetch_all(pool)
-            .await?;
+        let records =
+            sqlx::query_as_with::<sqlx::Sqlite, T, _>(AssertSqlSafe(main_sql), main_arguments)
+                .fetch_all(pool)
+                .await?;
 
         Ok(PaginatedResponse {
             records,

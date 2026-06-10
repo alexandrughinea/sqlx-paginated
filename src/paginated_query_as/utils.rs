@@ -1,6 +1,6 @@
 use crate::{DatabaseQueryDefaults, PaginatedQueryBuilder};
 use serde::Serialize;
-use sqlx::{Database, FromRow, IntoArguments};
+use sqlx::{Database, FromRow, IntoArguments, SqlSafeStr};
 
 /// Creates a new `PaginatedQueryBuilder` with database-specific defaults.
 ///
@@ -45,12 +45,12 @@ use sqlx::{Database, FromRow, IntoArguments};
 /// # }
 /// ```
 pub fn paginated_query_as<'q, T, DB>(
-    sql: &'q str,
-) -> PaginatedQueryBuilder<'q, T, DB, DB::Arguments<'q>>
+    sql: impl SqlSafeStr,
+) -> PaginatedQueryBuilder<'q, T, DB, DB::Arguments>
 where
     DB: Database + DatabaseQueryDefaults,
     T: for<'r> FromRow<'r, DB::Row> + Send + Unpin + Serialize + Default,
-    DB::Arguments<'q>: IntoArguments<'q, DB>,
+    DB::Arguments: IntoArguments<DB>,
     for<'c> &'c sqlx::Pool<DB>: sqlx::Executor<'c, Database = DB>,
     usize: sqlx::ColumnIndex<DB::Row>,
     i64: sqlx::Type<DB> + for<'r> sqlx::Decode<'r, DB> + Send + Unpin,

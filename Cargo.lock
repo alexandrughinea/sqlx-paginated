@@ -2178,10 +2178,21 @@ dependencies = [
  "serde",
  "serde_json",
  "sqlx",
+ "sqlx-paginated-derive",
  "testcontainers",
  "testcontainers-modules",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "sqlx-paginated-derive"
+version = "0.4.0"
+dependencies = [
+ "heck",
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

@@ -1,25 +1,36 @@
 use heck::{ToKebabCase, ToLowerCamelCase, ToShoutySnakeCase, ToSnakeCase, ToUpperCamelCase};
 use proc_macro::TokenStream;
-use quote::{format_ident, quote};
+use quote::{format_ident, quote, ToTokens};
 use syn::{
     parse_macro_input, spanned::Spanned, Attribute, Data, DeriveInput, Field, Fields, Ident,
-    LitStr, Type,
+    LitStr, Path, Type,
 };
 
-#[proc_macro_derive(Fields, attributes(sqlx))]
+#[proc_macro_derive(Fields, attributes(sqlx, sqlx_paginated))]
 pub fn derive_fields(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
-    match expand(input) {
+    match expand_fields(input) {
         Ok(tokens) => tokens.into(),
         Err(err) => err.to_compile_error().into(),
     }
 }
 
-fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
+#[proc_macro_derive(Paginated, attributes(sqlx_paginated))]
+pub fn derive_paginated(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    match expand_paginated(input) {
+        Ok(tokens) => tokens.into(),
+        Err(err) => err.to_compile_error().into(),
+    }
+}
+
+fn expand_fields(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
     let struct_ident = input.ident;
     let vis = input.vis;
     let enum_ident = format_ident!("{}Field", struct_ident);
     let rename_all = parse_rename_all(&input.attrs)?;
+    let container = ContainerAttrs::from_attrs(&input.attrs)?;
+    let crate_path = &container.crate_path;
 
     let fields = match input.data {
         Data::Struct(data) => match data.fields {
@@ -65,7 +76,7 @@ fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
                     Self::#variant_ident(inner) => inner.as_str()
                 });
                 contains_arms.push(quote! {
-                    _ if #child_enum_ident::contains(value) => true,
+                    _ if <#child_enum_ident as #crate_path::FieldEnum>::contains(value) => true,
                 });
             }
         }
@@ -85,7 +96,7 @@ fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
             }
         }
 
-        impl ::sqlx_paginated::FieldEnum for #enum_ident {
+        impl #crate_path::FieldEnum for #enum_ident {
             fn as_str(&self) -> &'static str {
                 match self {
                     #(#as_str_arms),*
@@ -93,19 +104,71 @@ fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
             }
 
             fn contains<S: AsRef<str>>(s: S) -> bool {
-                match s.as_ref() {
+                let value = s.as_ref();
+                match value {
                     #(#contains_arms)*
                     _ => false,
                 }
             }
         }
 
-        impl ::std::convert::Into<String> for #enum_ident {
-            fn into(self) -> String {
-                self.as_str().to_string()
+        impl ::std::convert::From<#enum_ident> for ::std::string::String {
+            fn from(value: #enum_ident) -> Self {
+                value.as_str().to_owned()
             }
         }
     })
+}
+
+fn expand_paginated(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
+    let struct_ident = input.ident;
+    let enum_ident = format_ident!("{}Field", struct_ident);
+    let generics = input.generics;
+    let container = ContainerAttrs::from_attrs(&input.attrs)?;
+    let crate_path = &container.crate_path;
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
+    Ok(quote! {
+        impl #impl_generics #crate_path::PaginatedInfo for #struct_ident #ty_generics #where_clause {
+            type Fields = #enum_ident;
+        }
+    })
+}
+
+struct ContainerAttrs {
+    crate_path: Path,
+}
+
+impl ContainerAttrs {
+    fn from_attrs(attrs: &[Attribute]) -> syn::Result<Self> {
+        let mut crate_path = None;
+
+        for attr in attrs {
+            if !attr.path().is_ident("sqlx_paginated") {
+                continue;
+            }
+
+            attr.parse_nested_meta(|meta| {
+                if meta.path.is_ident("crate") {
+                    let value: LitStr = meta.value()?.parse()?;
+                    if crate_path.is_some() {
+                        return Err(meta.error("duplicate sqlx_paginated attribute `crate`"));
+                    }
+                    crate_path = Some(value.parse()?);
+                    Ok(())
+                } else {
+                    let path = meta.path.to_token_stream().to_string().replace(' ', "");
+                    Err(meta.error(format!(
+                        "unknown sqlx_paginated container attribute `{path}`"
+                    )))
+                }
+            })?;
+        }
+
+        Ok(Self {
+            crate_path: crate_path.unwrap_or_else(|| syn::parse_quote!(::sqlx_paginated)),
+        })
+    }
 }
 
 enum FieldBehavior {
@@ -134,14 +197,27 @@ fn parse_field(field: &Field, rename_all: Option<&str>) -> syn::Result<FieldBeha
         if !attr.path().is_ident("sqlx") {
             continue;
         }
+
         attr.parse_nested_meta(|meta| {
             if meta.path.is_ident("rename") {
                 let value: LitStr = meta.value()?.parse()?;
+                if rename.is_some() {
+                    return Err(meta.error("duplicate sqlx field attribute `rename`"));
+                }
                 rename = Some(value.value());
             } else if meta.path.is_ident("flatten") {
+                if flatten {
+                    return Err(meta.error("duplicate sqlx field attribute `flatten`"));
+                }
                 flatten = true;
             } else if meta.path.is_ident("skip") {
+                if skip {
+                    return Err(meta.error("duplicate sqlx field attribute `skip`"));
+                }
                 skip = true;
+            } else {
+                let path = meta.path.to_token_stream().to_string().replace(' ', "");
+                return Err(meta.error(format!("unknown sqlx field attribute `{path}`")));
             }
             Ok(())
         })?;
@@ -175,26 +251,26 @@ fn parse_field(field: &Field, rename_all: Option<&str>) -> syn::Result<FieldBeha
 }
 
 fn parse_rename_all(attrs: &[Attribute]) -> syn::Result<Option<String>> {
+    let mut rename_all = None;
+
     for attr in attrs {
         if !attr.path().is_ident("sqlx") {
             continue;
         }
 
-        let mut rename_all = None;
         attr.parse_nested_meta(|meta| {
             if meta.path.is_ident("rename_all") {
                 let value: LitStr = meta.value()?.parse()?;
+                if rename_all.is_some() {
+                    return Err(meta.error("duplicate sqlx container attribute `rename_all`"));
+                }
                 rename_all = Some(value.value());
             }
             Ok(())
         })?;
-
-        if rename_all.is_some() {
-            return Ok(rename_all);
-        }
     }
 
-    Ok(None)
+    Ok(rename_all)
 }
 
 fn apply_rename_rule(name: &str, rule: &str) -> syn::Result<String> {
@@ -229,22 +305,4 @@ fn type_to_ident(ty: &Type) -> syn::Result<Ident> {
             "flatten fields must be path types",
         )),
     }
-}
-
-#[proc_macro_derive(Paginated)]
-pub fn derive_paginated(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-
-    let struct_ident = input.ident;
-    let enum_ident = format_ident!("{}Field", struct_ident);
-    let generics = input.generics;
-    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-
-    let expanded = quote! {
-        impl #impl_generics ::sqlx_paginated::Paginated for #struct_ident #ty_generics #where_clause {
-            type Fields = #enum_ident;
-        }
-    };
-
-    TokenStream::from(expanded)
 }

@@ -14,10 +14,9 @@ use serde::{Deserialize, Serialize};
 /// # Examples
 ///
 /// ```rust
-/// use sqlx_paginated::{QueryFilterOperator, QueryParamsBuilder};
-/// use serde::Serialize;
+/// use sqlx_paginated::{QueryFilterOperator, QueryParamsBuilder, Fields, Paginated};
 ///
-/// #[derive(Serialize, Default)]
+/// #[derive(Fields, Paginated)]
 /// struct Product {
 ///     price: f64,
 ///     stock: i32,

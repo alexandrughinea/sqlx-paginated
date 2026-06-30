@@ -1,19 +1,17 @@
 #![allow(clippy::unwrap_used, clippy::indexing_slicing)]
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
 use sqlx::postgres::{PgConnectOptions, PgPool, PgPoolOptions, Postgres};
 use sqlx::FromRow;
 use sqlx_paginated::{
     paginated_query_as, PaginatedResponse, QueryFilterOperator, QueryParamsBuilder,
-    QuerySortDirection,
+    QuerySortDirection, Fields, Paginated
 };
-use sqlx_paginated_derive::{Fields, Paginated};
 use testcontainers::runners::AsyncRunner;
 use testcontainers::ContainerAsync;
 use testcontainers_modules::postgres::Postgres as PostgresContainer;
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow, Paginated, Fields, Default)]
+#[derive(Debug, Clone, FromRow, Paginated, Fields)]
 struct TestUser {
     id: i32,
     first_name: String,
@@ -23,7 +21,7 @@ struct TestUser {
     created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow, Paginated, Fields, Default)]
+#[derive(Debug, Clone, FromRow, Paginated, Fields)]
 struct TestProduct {
     id: i32,
     name: String,
@@ -277,7 +275,7 @@ async fn test_sort_ascending() {
     seed_users(&pool).await.unwrap();
 
     let params = QueryParamsBuilder::<TestUser>::new()
-        .with_sort("first_name", QuerySortDirection::Ascending)
+        .with_sort(TestUserField::FirstName, QuerySortDirection::Ascending)
         .build();
 
     let result: PaginatedResponse<TestUser> =
@@ -482,7 +480,7 @@ async fn test_filter_null_check() {
         .await
         .unwrap();
 
-    #[derive(Debug, Serialize, FromRow, Default)]
+    #[derive(Debug, Paginated, Fields, FromRow)]
     struct TestNull {
         id: i32,
         name: String,

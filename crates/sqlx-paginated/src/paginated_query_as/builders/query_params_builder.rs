@@ -1,26 +1,25 @@
 use crate::paginated_query_as::internal::{
-    get_struct_field_names, QueryDateRangeParams, QueryPaginationParams, QuerySearchParams,
+    QueryDateRangeParams, QueryPaginationParams, QuerySearchParams,
     QuerySortParams, DEFAULT_DATE_RANGE_COLUMN_NAME, DEFAULT_MAX_PAGE_SIZE, DEFAULT_MIN_PAGE_SIZE,
     DEFAULT_PAGE,
 };
 use crate::paginated_query_as::models::QuerySortDirection;
 use crate::paginated_query_as::models::{QueryFilterCondition, QueryFilterOperator};
-use crate::QueryParams;
+use crate::{PaginatedInfo, QueryParams};
 use chrono::{DateTime, Utc};
-use serde::Serialize;
 use std::collections::HashMap;
 
-pub struct QueryParamsBuilder<'q, T> {
+pub struct QueryParamsBuilder<'q, T: PaginatedInfo> {
     query: QueryParams<'q, T>,
 }
 
-impl<T: Default + Serialize> Default for QueryParamsBuilder<'_, T> {
+impl<T: PaginatedInfo> Default for QueryParamsBuilder<'_, T> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<'q, T: Default + Serialize> QueryParamsBuilder<'q, T> {
+impl<'q, T: PaginatedInfo> QueryParamsBuilder<'q, T> {
     /// Creates a new `QueryParamsBuilder` with default values.
     ///
     /// Default values include:
@@ -32,10 +31,9 @@ impl<'q, T: Default + Serialize> QueryParamsBuilder<'q, T> {
     /// # Examples
     ///
     /// ```rust
-    /// use serde::{Serialize};
-    /// use sqlx_paginated::{QueryParamsBuilder};
+    /// use sqlx_paginated::{QueryParamsBuilder, Fields, Paginated};
     ///
-    /// #[derive(Serialize, Default)]
+    /// #[derive(Fields, Paginated)]
     /// struct UserExample {
     ///     name: String
     /// }
@@ -58,10 +56,9 @@ impl<'q, T: Default + Serialize> QueryParamsBuilder<'q, T> {
     /// # Examples
     ///
     /// ```rust
-    /// use serde::{Serialize};
-    /// use sqlx_paginated::{QueryParamsBuilder};
+    /// use sqlx_paginated::{QueryParamsBuilder, Paginated Fields};
     ///
-    /// #[derive(Serialize, Default)]
+    /// #[derive(Fields, Paginated)]
     /// struct UserExample {
     ///     name: String
     /// }
@@ -85,10 +82,9 @@ impl<'q, T: Default + Serialize> QueryParamsBuilder<'q, T> {
     /// # Examples
     ///
     /// ```rust
-    /// use serde::{Serialize};
-    /// use sqlx_paginated::{QueryParamsBuilder, QuerySortDirection};
+    /// use sqlx_paginated::{QueryParamsBuilder, QuerySortDirection, Fields, Paginated};
     ///
-    /// #[derive(Serialize, Default)]
+    /// #[derive(Fields, Paginated)]
     /// struct UserExample {
     ///     name: String
     /// }
@@ -119,10 +115,9 @@ impl<'q, T: Default + Serialize> QueryParamsBuilder<'q, T> {
     /// # Examples
     ///
     /// ```rust
-    /// use serde::{Serialize};
-    /// use sqlx_paginated::{QueryParamsBuilder, QuerySortDirection};
+    /// use sqlx_paginated::{QueryParamsBuilder, QuerySortDirection, Fields, Paginated};
     ///
-    /// #[derive(Serialize, Default)]
+    /// #[derive(Fields, Paginated)]
     /// struct UserExample {
     ///     name: String
     /// }
@@ -155,10 +150,9 @@ impl<'q, T: Default + Serialize> QueryParamsBuilder<'q, T> {
     ///
     /// ```rust
     /// use chrono::{DateTime, Utc};
-    /// use serde::{Serialize};
-    /// use sqlx_paginated::{QueryParamsBuilder, QuerySortDirection};
+    /// use sqlx_paginated::{QueryParamsBuilder, QuerySortDirection, Paginated, Fields};
     ///
-    /// #[derive(Serialize, Default)]
+    /// #[derive(Fields, Paginated)]
     /// struct UserExample {
     ///     name: String,
     ///     updated_at: DateTime<Utc>
@@ -204,10 +198,9 @@ impl<'q, T: Default + Serialize> QueryParamsBuilder<'q, T> {
     /// # Examples
     ///
     /// ```rust
-    /// use serde::{Serialize};
-    /// use sqlx_paginated::{QueryParamsBuilder, QueryFilterOperator};
+    /// use sqlx_paginated::{QueryParamsBuilder, QueryFilterOperator, Fields, Paginated};
     ///
-    /// #[derive(Serialize, Default)]
+    /// #[derive(Fields, Paginated)]
     /// struct Product {
     ///     name: String,
     ///     price: f64,
@@ -228,9 +221,8 @@ impl<'q, T: Default + Serialize> QueryParamsBuilder<'q, T> {
         value: impl Into<String>,
     ) -> Self {
         let key = key.into();
-        let valid_fields = get_struct_field_names::<T>();
 
-        if valid_fields.contains(&key) {
+        if T::is_known_field(&key) {
             self.query
                 .filters
                 .insert(key, QueryFilterCondition::new(operator, Some(value)));
@@ -251,10 +243,9 @@ impl<'q, T: Default + Serialize> QueryParamsBuilder<'q, T> {
     /// # Examples
     ///
     /// ```rust
-    /// use serde::{Serialize};
-    /// use sqlx_paginated::{QueryParamsBuilder};
+    /// use sqlx_paginated::{QueryParamsBuilder, Fields, Paginated};
     ///
-    /// #[derive(Serialize, Default)]
+    /// #[derive(Fields, Paginated)]
     /// struct User {
     ///     name: String,
     ///     deleted_at: Option<String>,
@@ -266,9 +257,8 @@ impl<'q, T: Default + Serialize> QueryParamsBuilder<'q, T> {
     /// ```
     pub fn with_filter_null(mut self, key: impl Into<String>, is_null: bool) -> Self {
         let key = key.into();
-        let valid_fields = get_struct_field_names::<T>();
 
-        if valid_fields.contains(&key) {
+        if T::is_known_field(&key) {
             let condition = if is_null {
                 QueryFilterCondition::is_null()
             } else {
@@ -292,10 +282,9 @@ impl<'q, T: Default + Serialize> QueryParamsBuilder<'q, T> {
     /// # Examples
     ///
     /// ```rust
-    /// use serde::{Serialize};
-    /// use sqlx_paginated::{QueryParamsBuilder};
+    /// use sqlx_paginated::{QueryParamsBuilder, Fields, Paginated};
     ///
-    /// #[derive(Serialize, Default)]
+    /// #[derive(Fields, Paginated)]
     /// struct User {
     ///     name: String,
     ///     role: String,
@@ -311,9 +300,8 @@ impl<'q, T: Default + Serialize> QueryParamsBuilder<'q, T> {
         values: Vec<impl Into<String>>,
     ) -> Self {
         let key = key.into();
-        let valid_fields = get_struct_field_names::<T>();
 
-        if valid_fields.contains(&key) {
+        if T::is_known_field(&key) {
             self.query
                 .filters
                 .insert(key, QueryFilterCondition::in_list(values));
@@ -334,10 +322,9 @@ impl<'q, T: Default + Serialize> QueryParamsBuilder<'q, T> {
     /// # Examples
     ///
     /// ```rust
-    /// use serde::{Serialize};
-    /// use sqlx_paginated::{QueryParamsBuilder};
+    /// use sqlx_paginated::{QueryParamsBuilder, Fields, Paginated};
     ///
-    /// #[derive(Serialize, Default)]
+    /// #[derive(Fields, Paginated)]
     /// struct User {
     ///     name: String,
     ///     role: String,
@@ -353,9 +340,8 @@ impl<'q, T: Default + Serialize> QueryParamsBuilder<'q, T> {
         values: Vec<impl Into<String>>,
     ) -> Self {
         let key = key.into();
-        let valid_fields = get_struct_field_names::<T>();
 
-        if valid_fields.contains(&key) {
+        if T::is_known_field(&key) {
             self.query
                 .filters
                 .insert(key, QueryFilterCondition::not_in_list(values));
@@ -382,11 +368,9 @@ impl<'q, T: Default + Serialize> QueryParamsBuilder<'q, T> {
     /// # Examples
     ///
     /// ```rust
-    /// use std::any::Any;
-    /// use serde::{Serialize};
-    /// use sqlx_paginated::{QueryParamsBuilder};
+    /// use sqlx_paginated::{QueryParamsBuilder, Paginated, Fields};
     ///
-    /// #[derive(Serialize, Default)]
+    /// #[derive(Fields, Paginated)]
     /// struct UserExample {
     ///     name: String,
     ///     status: String,
@@ -400,9 +384,8 @@ impl<'q, T: Default + Serialize> QueryParamsBuilder<'q, T> {
     /// ```
     pub fn with_filter(mut self, key: impl Into<String>, value: Option<impl Into<String>>) -> Self {
         let key = key.into();
-        let valid_fields = get_struct_field_names::<T>();
 
-        if valid_fields.contains(&key) {
+        if T::is_known_field(&key) {
             if let Some(val) = value {
                 self.query
                     .filters
@@ -430,10 +413,9 @@ impl<'q, T: Default + Serialize> QueryParamsBuilder<'q, T> {
     ///
     /// ```rust
     /// use std::collections::HashMap;
-    /// use serde::{Serialize};
-    /// use sqlx_paginated::{QueryParamsBuilder};
+    /// use sqlx_paginated::{QueryParamsBuilder, Fields, Paginated};
     ///
-    /// #[derive(Serialize, Default)]
+    /// #[derive(Fields, Paginated)]
     /// struct UserExample {
     ///     name: String,
     ///     status: String,
@@ -452,13 +434,12 @@ impl<'q, T: Default + Serialize> QueryParamsBuilder<'q, T> {
         mut self,
         filters: HashMap<impl Into<String>, Option<impl Into<String>>>,
     ) -> Self {
-        let valid_fields = get_struct_field_names::<T>();
 
         self.query
             .filters
             .extend(filters.into_iter().filter_map(|(key, value)| {
                 let key = key.into();
-                if valid_fields.contains(&key) {
+                if T::is_known_field(&key) {
                     value.map(|v| (key, QueryFilterCondition::equal(v)))
                 } else {
                     #[cfg(feature = "tracing")]
@@ -485,10 +466,9 @@ impl<'q, T: Default + Serialize> QueryParamsBuilder<'q, T> {
     ///
     /// ```rust
     /// use std::collections::HashMap;
-    /// use serde::{Serialize};
-    /// use sqlx_paginated::{QueryParamsBuilder, QueryFilterCondition, QueryFilterOperator};
+    /// use sqlx_paginated::{QueryParamsBuilder, QueryFilterCondition, QueryFilterOperator, Fields, Paginated};
     ///
-    /// #[derive(Serialize, Default)]
+    /// #[derive(Fields, Paginated)]
     /// struct Product {
     ///     name: String,
     ///     price: f64,
@@ -507,13 +487,12 @@ impl<'q, T: Default + Serialize> QueryParamsBuilder<'q, T> {
         mut self,
         filters: HashMap<impl Into<String>, QueryFilterCondition>,
     ) -> Self {
-        let valid_fields = get_struct_field_names::<T>();
 
         self.query
             .filters
             .extend(filters.into_iter().filter_map(|(key, condition)| {
                 let key = key.into();
-                if valid_fields.contains(&key) {
+                if T::is_known_field(&key) {
                     Some((key, condition))
                 } else {
                     #[cfg(feature = "tracing")]
@@ -535,10 +514,9 @@ impl<'q, T: Default + Serialize> QueryParamsBuilder<'q, T> {
     ///
     /// ```rust
     /// use chrono::{DateTime, Utc};
-    /// use sqlx_paginated::{QueryParamsBuilder, QuerySortDirection};
-    /// use serde::{Serialize};
+    /// use sqlx_paginated::{QueryParamsBuilder, QuerySortDirection, Paginated, Fields};
     ///
-    /// #[derive(Serialize, Default)]
+    /// #[derive(Fields, Paginated)]
     /// struct UserExample {
     ///     name: String,
     ///     status: String,
@@ -568,8 +546,9 @@ mod tests {
     use crate::paginated_query_as::models::QuerySortDirection;
     use chrono::{DateTime, Utc};
     use std::collections::HashMap;
+    use sqlx_paginated_derive::{Fields, Paginated};
 
-    #[derive(Debug, Default, Serialize)]
+    #[derive(Debug, Fields, Paginated)]
     struct TestModel {
         name: String,
         title: String,

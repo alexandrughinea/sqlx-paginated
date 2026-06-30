@@ -1,15 +1,13 @@
 use crate::paginated_query_as::internal::{ColumnProtection, QueryDialect};
 use crate::paginated_query_as::models::{QueryFilterCondition, QueryFilterOperator};
-use crate::QueryParams;
+use crate::{PaginatedInfo, QueryParams};
 use chrono::{DateTime, Utc};
-use serde::Serialize;
 use sqlx::{Arguments, Database, Encode, Type};
 use std::marker::PhantomData;
 
-pub struct QueryBuilder<'q, T, DB: Database> {
+pub struct QueryBuilder<'q, T: PaginatedInfo, DB: Database> {
     pub conditions: Vec<String>,
     pub arguments: DB::Arguments,
-    pub(crate) valid_columns: Vec<String>,
     pub(crate) protection: Option<ColumnProtection>,
     pub(crate) protection_enabled: bool,
     pub(crate) dialect: Box<dyn QueryDialect>,
@@ -18,7 +16,7 @@ pub struct QueryBuilder<'q, T, DB: Database> {
 
 impl<'q, T, DB> QueryBuilder<'q, T, DB>
 where
-    T: Default + Serialize,
+    T: PaginatedInfo,
     DB: Database,
     String: for<'a> Encode<'a, DB> + Type<DB>,
 {
@@ -31,8 +29,8 @@ where
     /// # Returns
     ///
     /// Returns `true` if the column exists in the valid columns list, `false` otherwise.
-    pub(crate) fn has_column(&self, column: &str) -> bool {
-        self.valid_columns.contains(&column.to_string())
+    pub(crate) fn has_column(&self, column: &str) -> bool { 
+        T::is_known_field(column)
     }
 
     fn is_column_safe(&self, column: &str) -> bool {
@@ -69,10 +67,9 @@ where
     ///
     /// ```rust
     /// use sqlx::Postgres;
-    /// use serde::{Serialize};
-    /// use sqlx_paginated::{QueryBuilder, QueryParamsBuilder};
+    /// use sqlx_paginated::{QueryBuilder, QueryParamsBuilder, Paginated, Fields};
     ///
-    /// #[derive(Serialize, Default)]
+    /// #[derive(Fields, Paginated)]
     /// struct UserExample {
     ///     name: String
     /// }
@@ -146,10 +143,9 @@ where
     ///
     /// ```rust
     /// use sqlx::Postgres;
-    /// use serde::{Serialize};
-    /// use sqlx_paginated::{QueryBuilder, QueryParamsBuilder, QueryFilterOperator};
+    /// use sqlx_paginated::{QueryBuilder, QueryParamsBuilder, QueryFilterOperator, Paginated, Fields};
     ///
-    /// #[derive(Serialize, Default)]
+    /// #[derive(Fields, Paginated)]
     /// struct Product {
     ///     name: String,
     ///     price: f64,
@@ -272,11 +268,10 @@ where
     ///
     /// ```rust
     /// use sqlx::Postgres;
-    /// use serde::{Serialize};
     /// use chrono::{DateTime};
-    /// use sqlx_paginated::{QueryBuilder, QueryParamsBuilder, QueryParams};
+    /// use sqlx_paginated::{QueryBuilder, QueryParamsBuilder, QueryParams, Paginated, Fields};
     ///
-    /// #[derive(Serialize, Default)]
+    /// #[derive(Fields, Paginated)]
     /// struct UserExample {
     ///     name: String
     /// }
@@ -342,10 +337,9 @@ where
     ///
     /// ```rust
     /// use sqlx::Postgres;
-    /// use serde::{Serialize};
-    /// use sqlx_paginated::{QueryBuilder};
+    /// use sqlx_paginated::{QueryBuilder, Fields, Paginated};
     ///
-    /// #[derive(Serialize, Default)]
+    /// #[derive(Fields, Paginated)]
     /// struct UserExample {
     ///     name: String
     /// }
@@ -396,10 +390,11 @@ where
     ///
     /// ```rust
     /// use sqlx::Postgres;
-    /// use serde::{Serialize};
-    /// use sqlx_paginated::{QueryBuilder};
+    /// use sqlx_paginated::{QueryBuilder, Paginated, Fields};
     ///
-    /// #[derive(Serialize, Default)]
+    /// use sqlx_paginated_derive::{Fields, Paginated};
+    ///
+    /// #[derive(Serialize, Default, Fields, Paginated)]
     /// struct UserExample {
     ///     name: String
     /// }
@@ -431,10 +426,9 @@ where
     ///
     /// ```rust
     /// use sqlx::Postgres;
-    /// use serde::{Serialize};
-    /// use sqlx_paginated::{QueryBuilder};
+    /// use sqlx_paginated::{QueryBuilder, Paginated, Fields};
     ///
-    /// #[derive(Serialize, Default)]
+    /// #[derive(Fields, Paginated)]
     /// struct UserExample {
     ///     name: String
     /// }
@@ -468,10 +462,9 @@ where
     ///
     /// ```rust
     /// use sqlx::Postgres;
-    /// use serde::{Serialize};
-    /// use sqlx_paginated::{QueryBuilder};
+    /// use sqlx_paginated::{QueryBuilder, Paginated, Fields};
     ///
-    /// #[derive(Serialize, Default)]
+    /// #[derive(Fields, Paginated)]
     /// struct UserExample {
     ///     name: String
     /// }
@@ -498,10 +491,9 @@ where
     ///
     /// ```rust
     /// use sqlx::Postgres;
-    /// use serde::{Serialize};
-    /// use sqlx_paginated::{QueryBuilder, QueryParamsBuilder};
+    /// use sqlx_paginated::{QueryBuilder, QueryParamsBuilder, Paginated, Fields};
     ///
-    /// #[derive(Serialize, Default)]
+    /// #[derive(Fields, Paginated)]
     /// struct UserExample {
     ///     name: String
     /// }

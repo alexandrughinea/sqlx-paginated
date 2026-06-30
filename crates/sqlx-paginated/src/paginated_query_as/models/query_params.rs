@@ -6,6 +6,7 @@ use crate::paginated_query_as::models::QueryFilterCondition;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::marker::PhantomData;
+use crate::PaginatedInfo;
 
 /// Flattened query parameters suitable for deserializing from HTTP query strings.
 ///
@@ -22,7 +23,6 @@ use std::marker::PhantomData;
 ///
 /// ```rust
 /// use sqlx_paginated::FlatQueryParams;
-/// use serde::Deserialize;
 ///
 /// // Simple equality filters:
 /// // ?status=active&role=admin
@@ -81,10 +81,9 @@ pub struct FlatQueryParams {
 /// # Examples
 ///
 /// ```rust
-/// use sqlx_paginated::{QueryParams, QueryParamsBuilder, QuerySortDirection};
-/// use serde::Serialize;
+/// use sqlx_paginated::{QueryParams, QueryParamsBuilder, QuerySortDirection, Fields, Paginated};
 ///
-/// #[derive(Serialize, Default)]
+/// #[derive(Fields, Paginated)]
 /// struct User {
 ///     name: String,
 ///     email: String,
@@ -96,8 +95,8 @@ pub struct FlatQueryParams {
 ///     .with_search("john", vec!["name", "email"])
 ///     .build();
 /// ```
-#[derive(Default, Clone)]
-pub struct QueryParams<'q, T> {
+#[derive(Clone)]
+pub struct QueryParams<'q, T: PaginatedInfo> {
     /// Pagination configuration (page, page_size)
     pub pagination: QueryPaginationParams,
 
@@ -126,7 +125,23 @@ pub struct QueryParams<'q, T> {
     pub(crate) _phantom: PhantomData<&'q T>,
 }
 
-impl<'q, T> From<FlatQueryParams> for QueryParams<'q, T> {
+// Custom default implementation to not require T to carry default as well
+impl<'q, T: PaginatedInfo> Default for QueryParams<'q, T> {
+    fn default() -> Self {
+        Self {
+            pagination: Default::default(),
+            sort: Default::default(),
+            search: Default::default(),
+            date_range: Default::default(),
+            filters: Default::default(),
+            #[allow(deprecated)]
+            simple_filters: Default::default(),
+            _phantom: Default::default(),
+        }
+    }
+}
+
+impl<'q, T: PaginatedInfo> From<FlatQueryParams> for QueryParams<'q, T> {
     fn from(params: FlatQueryParams) -> Self {
         let filters = params.filters.unwrap_or_default();
 

@@ -1,18 +1,18 @@
 use crate::{QueryBuilder, QueryParams};
-use serde::Serialize;
 
 #[cfg(feature = "postgres")]
 pub mod postgres_examples {
     use super::*;
     use sqlx::postgres::PgArguments;
     use sqlx::Postgres;
+    use crate::{PaginatedInfo};
 
     #[allow(dead_code)]
     pub fn build_query_with_disabled_protection<T>(
         params: &QueryParams<T>,
     ) -> (Vec<String>, PgArguments)
     where
-        T: Default + Serialize,
+        T: PaginatedInfo,
     {
         QueryBuilder::<T, Postgres>::new()
             .with_search(params)
@@ -25,7 +25,7 @@ pub mod postgres_examples {
     #[allow(dead_code)]
     pub fn build_query_with_safe_defaults<T>(params: &QueryParams<T>) -> (Vec<String>, PgArguments)
     where
-        T: Default + Serialize,
+        T: PaginatedInfo,
     {
         QueryBuilder::<T, Postgres>::new()
             .with_search(params)
@@ -39,8 +39,9 @@ pub mod postgres_examples {
         use super::*;
         use crate::QueryParamsBuilder;
         use chrono::{DateTime, Utc};
+        use sqlx_paginated_derive::{Fields, Paginated};
 
-        #[derive(Debug, Default, Serialize)]
+        #[derive(Paginated, Fields)]
         struct TestModel {
             name: String,
             title: String,
@@ -81,13 +82,14 @@ pub mod sqlite_examples {
     use super::*;
     use sqlx::sqlite::SqliteArguments;
     use sqlx::Sqlite;
+    use crate::PaginatedInfo;
 
     #[allow(dead_code)]
     pub fn build_query_with_safe_defaults<T>(
         params: &QueryParams<T>,
     ) -> (Vec<String>, SqliteArguments)
     where
-        T: Default + Serialize,
+        T: PaginatedInfo,
     {
         QueryBuilder::<T, Sqlite>::new()
             .with_search(params)
@@ -101,7 +103,7 @@ pub mod sqlite_examples {
         params: &QueryParams<T>,
     ) -> (Vec<String>, SqliteArguments)
     where
-        T: Default + Serialize,
+        T: PaginatedInfo,
     {
         QueryBuilder::<T, Sqlite>::new()
             .with_search(params)
@@ -116,8 +118,9 @@ pub mod sqlite_examples {
         use super::*;
         use crate::QueryParamsBuilder;
         use chrono::{DateTime, Utc};
+        use sqlx_paginated_derive::{Fields, Paginated};
 
-        #[derive(Debug, Default, Serialize)]
+        #[derive(Debug, Paginated, Fields)]
         struct TestModel {
             name: String,
             title: String,

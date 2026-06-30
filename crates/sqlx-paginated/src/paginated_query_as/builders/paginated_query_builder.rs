@@ -1,8 +1,7 @@
 use crate::paginated_query_as::internal::quote_identifier;
 use crate::paginated_query_as::models::QuerySortDirection;
 use crate::paginated_query_as::AsExecutor;
-use crate::{FlatQueryParams, PaginatedResponse, QueryParams};
-use serde::Serialize;
+use crate::{FlatQueryParams, PaginatedInfo, PaginatedResponse, QueryParams};
 use sqlx::{query::QueryAs, AssertSqlSafe, Database, Execute, FromRow, IntoArguments};
 use std::marker::PhantomData;
 
@@ -13,7 +12,7 @@ type QueryBuilderFn<T, DB> = Box<
 pub struct PaginatedQueryBuilder<'q, T, DB, A>
 where
     DB: Database,
-    T: for<'r> FromRow<'r, <DB as Database>::Row> + Send + Unpin,
+    T: for<'r> FromRow<'r, <DB as Database>::Row> + Send + Unpin + PaginatedInfo,
 {
     base_sql: sqlx::SqlStr,
     params: QueryParams<'q, T>,
@@ -35,13 +34,13 @@ where
 ///
 /// # Generic Constraints
 ///
-/// * `T`: Must be deserializable from Postgres rows (`FromRow`), `Send`, and `Unpin`
+/// * `T`: Must be deserializable from Postgres rows (`FromRow`), `PaginatedInfo`, `Send`, and `Unpin`
 /// * `A`: Must be compatible with Postgres arguments and `Send`
 ///
 impl<'q, T, DB, A> PaginatedQueryBuilder<'q, T, DB, A>
 where
     DB: Database,
-    T: for<'r> FromRow<'r, <DB as Database>::Row> + Send + Unpin + Serialize + Default,
+    T: for<'r> FromRow<'r, <DB as Database>::Row> + Send + Unpin + PaginatedInfo,
     A: IntoArguments<DB> + Send,
     DB::Arguments: IntoArguments<DB>,
     usize: sqlx::ColumnIndex<<DB as Database>::Row>,
@@ -63,10 +62,9 @@ where
     ///
     /// ```rust
     /// use sqlx::{FromRow, Postgres};
-    /// use serde::{Serialize};
-    /// use sqlx_paginated::PaginatedQueryBuilder;
+    /// use sqlx_paginated::{PaginatedQueryBuilder, Paginated, Fields};
     ///
-    /// #[derive(Serialize, FromRow, Default)]
+    /// #[derive(Fields, FromRow, Paginated)]
     /// struct UserExample {
     ///     name: String
     /// }
@@ -172,11 +170,9 @@ where
 #[cfg(feature = "postgres")]
 impl<'q, T, A> PaginatedQueryBuilder<'q, T, sqlx::Postgres, A>
 where
-    T: for<'r> FromRow<'r, <sqlx::Postgres as sqlx::Database>::Row>
+    T: for<'r> FromRow<'r, <sqlx::Postgres as sqlx::Database>::Row> + PaginatedInfo
         + Send
-        + Unpin
-        + Serialize
-        + Default,
+        + Unpin,
     A: IntoArguments<sqlx::Postgres> + Send,
 {
     /// Creates a new `PaginatedQueryBuilder` for PostgreSQL with default settings.
@@ -195,10 +191,9 @@ where
     ///
     /// ```rust
     /// use sqlx::{FromRow, Postgres};
-    /// use serde::{Serialize};
-    /// use sqlx_paginated::PaginatedQueryBuilder;
+    /// use sqlx_paginated::{PaginatedQueryBuilder, Paginated, Fields};
     ///
-    /// #[derive(Serialize, FromRow, Default)]
+    /// #[derive(Fields, FromRow, Paginated)]
     /// struct UserExample {
     ///     name: String
     /// }
@@ -231,10 +226,9 @@ where
     ///
     /// ```rust,no_run
     /// use sqlx::{FromRow, PgPool, Postgres};
-    /// use serde::Serialize;
-    /// use sqlx_paginated::{PaginatedQueryBuilder, QueryParamsBuilder};
+    /// use sqlx_paginated::{PaginatedQueryBuilder, QueryParamsBuilder, Paginated, Fields};
     ///
-    /// #[derive(Serialize, FromRow, Default)]
+    /// #[derive(Fields, FromRow, Paginated)]
     /// struct User {
     ///     id: i32,
     ///     name: String,
@@ -320,11 +314,9 @@ where
 #[cfg(feature = "sqlite")]
 impl<'q, T, A> PaginatedQueryBuilder<'q, T, sqlx::Sqlite, A>
 where
-    T: for<'r> FromRow<'r, <sqlx::Sqlite as sqlx::Database>::Row>
+    T: for<'r> FromRow<'r, <sqlx::Sqlite as sqlx::Database>::Row> + PaginatedInfo
         + Send
-        + Unpin
-        + Serialize
-        + Default,
+        + Unpin,
     A: IntoArguments<sqlx::Sqlite> + Send,
 {
     /// Creates a new `PaginatedQueryBuilder` for SQLite with default settings.
@@ -343,10 +335,9 @@ where
     ///
     /// ```rust
     /// use sqlx::{FromRow, Sqlite};
-    /// use serde::{Serialize};
-    /// use sqlx_paginated::PaginatedQueryBuilder;
+    /// use sqlx_paginated::{Fields, Paginated, PaginatedQueryBuilder};
     ///
-    /// #[derive(Serialize, FromRow, Default)]
+    /// #[derive(Fields, FromRow, Paginated)]
     /// struct UserExample {
     ///     name: String
     /// }
@@ -389,10 +380,9 @@ where
     ///
     /// ```rust,no_run
     /// use sqlx::{FromRow, SqlitePool, Sqlite};
-    /// use serde::Serialize;
-    /// use sqlx_paginated::{PaginatedQueryBuilder, QueryParamsBuilder};
+    /// use sqlx_paginated::{Fields, Paginated, PaginatedQueryBuilder, QueryParamsBuilder};
     ///
-    /// #[derive(Serialize, FromRow, Default)]
+    /// #[derive(Fields, FromRow, Paginated)]
     /// struct User {
     ///     id: i32,
     ///     name: String,

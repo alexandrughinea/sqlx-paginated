@@ -1,23 +1,22 @@
 #![allow(clippy::unwrap_used)]
 
 #[cfg(feature = "postgres")]
-use crate::paginated_query_as::QueryParamsBuilder;
+use crate::paginated_query_as::{QueryParamsBuilder};
 #[cfg(feature = "postgres")]
-use crate::{paginated_query_as, QueryBuilder};
+use crate::{paginated_query_as, QueryBuilder, Paginated, Fields};
 #[cfg(feature = "postgres")]
 use crate::{PaginatedResponse, QuerySortDirection};
 #[cfg(feature = "postgres")]
 use chrono::Utc;
-#[cfg(feature = "postgres")]
-use serde::Serialize;
 #[cfg(feature = "postgres")]
 use sqlx::{Arguments, FromRow, PgPool, Postgres};
 #[cfg(feature = "postgres")]
 use std::collections::HashMap;
 
 #[cfg(feature = "postgres")]
-#[derive(Default, Serialize, FromRow)]
+#[derive(Fields, Paginated, FromRow)]
 #[allow(dead_code)]
+#[sqlx_paginated(crate = "crate")]
 pub struct UserExample {
     id: String,
     name: String,

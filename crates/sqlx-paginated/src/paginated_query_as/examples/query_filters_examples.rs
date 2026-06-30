@@ -9,14 +9,15 @@
 pub mod postgres_examples {
     use crate::{
         QueryBuilder, QueryFilterCondition, QueryFilterOperator, QueryParamsBuilder,
-        QuerySortDirection,
+        QuerySortDirection
     };
-    use serde::Serialize;
+    use sqlx_paginated_derive::{Fields, Paginated};
     use sqlx::Postgres;
     use std::collections::HashMap;
 
     #[allow(dead_code)]
-    #[derive(Serialize, Default)]
+    #[derive(Fields, Paginated)]
+    #[sqlx_paginated(crate = "crate")]
     pub struct Product {
         pub id: i64,
         pub name: String,
@@ -311,10 +312,10 @@ pub mod postgres_examples {
 #[cfg(feature = "sqlite")]
 pub mod sqlite_examples {
     use crate::{QueryBuilder, QueryFilterOperator, QueryParamsBuilder};
-    use serde::Serialize;
     use sqlx::Sqlite;
+    use sqlx_paginated_derive::{Fields, Paginated};
 
-    #[derive(Serialize, Default)]
+    #[derive(Fields, Paginated)]
     pub struct Product {
         pub id: i64,
         pub name: String,

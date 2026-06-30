@@ -3,8 +3,6 @@ use crate::paginated_query_as::internal::{
     DEFAULT_SEARCH_COLUMN_NAMES, DEFAULT_SORT_COLUMN_NAME,
 };
 use crate::QuerySortDirection;
-use serde::Serialize;
-use serde_json::Value;
 
 pub fn default_page() -> i64 {
     DEFAULT_PAGE
@@ -45,22 +43,6 @@ pub fn quote_identifier(identifier: &str) -> String {
         .join(".")
 }
 
-pub fn get_struct_field_names<T>() -> Vec<String>
-where
-    T: Default + Serialize,
-{
-    let default_value = T::default();
-    let Ok(json_value) = serde_json::to_value(default_value) else {
-        return vec![];
-    };
-
-    if let Value::Object(map) = json_value {
-        map.keys().cloned().collect()
-    } else {
-        vec![]
-    }
-}
-
 pub fn extract_digits_from_strings(val: impl Into<String>) -> String {
     val.into().chars().filter(|c| c.is_ascii_digit()).collect()
 }
@@ -71,7 +53,6 @@ mod tests {
     use super::*;
     use crate::paginated_query_as::internal::DEFAULT_MIN_PAGE_SIZE;
     use crate::paginated_query_as::models::QuerySortDirection;
-    use serde::Serialize;
 
     #[test]
     fn test_default_page() {
@@ -174,43 +155,7 @@ mod tests {
         assert_eq!(quote_identifier("column@db"), "\"column@db\"");
         assert_eq!(quote_identifier("user#1"), "\"user#1\"");
     }
-
-    #[derive(Default, Serialize)]
-    struct TestStruct {
-        id: i32,
-        name: String,
-        #[serde(rename = "email_address")]
-        email: String,
-        #[serde(skip)]
-        #[allow(dead_code)]
-        internal: bool,
-    }
-
-    #[test]
-    fn test_get_struct_field_names() {
-        let fields = get_struct_field_names::<TestStruct>();
-
-        assert!(fields.contains(&"id".to_string()));
-        assert!(fields.contains(&"name".to_string()));
-        assert!(fields.contains(&"email_address".to_string())); // renamed field
-        assert!(!fields.contains(&"internal".to_string())); // skipped field
-        assert_eq!(fields.len(), 3);
-    }
-
-    #[derive(Default, Serialize)]
-    struct EmptyStruct {}
-
-    #[test]
-    fn test_get_struct_field_names_edge_cases() {
-        // Empty struct
-        assert!(get_struct_field_names::<EmptyStruct>().is_empty());
-
-        // Unit struct
-        #[derive(Default, Serialize)]
-        struct UnitStruct;
-        assert!(get_struct_field_names::<UnitStruct>().is_empty());
-    }
-
+    
     #[test]
     fn test_extract_digits_from_strings() {
         assert_eq!(extract_digits_from_strings("123abc456"), "123456");

@@ -1,13 +1,12 @@
 use crate::paginated_query_as::internal::{
     get_struct_field_names, ColumnProtection, SqliteDialect,
 };
-use crate::QueryBuilder;
-use serde::Serialize;
+use crate::{PaginatedInfo, QueryBuilder};
 use std::marker::PhantomData;
 
 impl<'q, T> Default for QueryBuilder<'q, T, sqlx::Sqlite>
 where
-    T: Default + Serialize,
+    T: PaginatedInfo,
 {
     fn default() -> Self {
         Self::new()
@@ -16,7 +15,7 @@ where
 
 impl<'q, T> QueryBuilder<'q, T, sqlx::Sqlite>
 where
-    T: Default + Serialize,
+    T: PaginatedInfo,
 {
     pub fn new() -> Self {
         Self {

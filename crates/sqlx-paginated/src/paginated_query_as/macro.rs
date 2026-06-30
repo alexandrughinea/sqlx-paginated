@@ -12,10 +12,11 @@
 /// ```rust
 /// use sqlx::Postgres;
 /// use sqlx_paginated::paginated_query_as;
+/// use sqlx_paginated_derive::{Paginated, Fields}
 ///
 /// # use sqlx::FromRow;
-/// # use serde::Serialize;
-/// # #[derive(FromRow, Serialize, Default)]
+/// # 
+/// # #[derive(FromRow, Paginated, Fields)]
 /// # struct User { name: String }
 /// let builder = paginated_query_as!(User, Postgres, "SELECT * FROM users");
 /// ```
@@ -26,10 +27,10 @@
 /// # {
 /// use sqlx::Sqlite;
 /// use sqlx_paginated::paginated_query_as;
+/// use sqlx_paginated_derive::{Fields, Paginated};
 ///
 /// # use sqlx::FromRow;
-/// # use serde::Serialize;
-/// # #[derive(FromRow, Serialize, Default)]
+/// # #[derive(FromRow, Fields, Paginated)]
 /// # struct User { name: String }
 /// let builder = paginated_query_as!(User, Sqlite, "SELECT * FROM users");
 /// # }

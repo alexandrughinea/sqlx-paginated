@@ -4,6 +4,3 @@ members = [
     "crates/sqlx-paginated",
     "crates/sqlx-paginated-derive",
 ]
-
-[workspace.dependencies]
-sqlx-paginated-derive = { path = "crates/sqlx-paginated-derive" }

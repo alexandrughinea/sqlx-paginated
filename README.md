@@ -125,7 +125,7 @@ let params = QueryParamsBuilder::<User>::new()
 
 3. **Advanced builder patterns**
 - Optional fluent API for query parameters (QueryParams) which allow defining search, search location, date filtering, ordering, and custom filtering.
-- Fluent API for the entire supported feature set, more here: [advanced example](src/paginated_query_as/examples/paginated_query_builder_advanced_examples.rs)
+- Fluent API for the entire supported feature set, more here: [advanced example](crates/sqlx-paginated/src/paginated_query_as/examples/paginated_query_builder_advanced_examples.rs)
 
 ```rust
     paginated_query_as::<UserExample, Postgres>("SELECT * FROM users")
@@ -278,11 +278,11 @@ Run with: `cd examples/sqlx-paginated-sqlite-example && cargo run`
 
 #### Query building code examples
 
-For detailed query building patterns, see **[src/paginated_query_as/examples](src/paginated_query_as/examples/)**:
+For detailed query building patterns, see **[src/paginated_query_as/examples](crates/sqlx-paginated/src/paginated_query_as/examples/)**:
 
-- **[query_filters_examples.rs](src/paginated_query_as/examples/query_filters_examples.rs)** - Examples of all filter operators including comparison operators, IN/NOT IN, NULL checks, LIKE patterns, and complex filtering scenarios
-- **[query_builder_examples.rs](src/paginated_query_as/examples/query_builder_examples.rs)** - Query builder examples showing safe defaults and custom query construction for PostgreSQL and SQLite
-- **[paginated_query_builder_advanced_examples.rs](src/paginated_query_as/examples/paginated_query_builder_advanced_examples.rs)** - Advanced query builder usage with custom conditions and protection disabling
+- **[query_filters_examples.rs](crates/sqlx-paginated/src/paginated_query_as/examples/query_filters_examples.rs)** - Examples of all filter operators including comparison operators, IN/NOT IN, NULL checks, LIKE patterns, and complex filtering scenarios
+- **[query_builder_examples.rs](crates/sqlx-paginated/src/paginated_query_as/examples/query_builder_examples.rs)** - Query builder examples showing safe defaults and custom query construction for PostgreSQL and SQLite
+- **[paginated_query_builder_advanced_examples.rs](crates/sqlx-paginated/src/paginated_query_as/examples/paginated_query_builder_advanced_examples.rs)** - Advanced query builder usage with custom conditions and protection disabling
 
 ### Response example
 ```json

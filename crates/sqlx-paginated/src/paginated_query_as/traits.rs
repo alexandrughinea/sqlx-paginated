@@ -3,3 +3,11 @@ pub trait FieldEnum {
 
     fn contains<S: AsRef<str>>(s: S) -> bool;
 }
+
+pub trait Paginated {
+    type Fields: FieldEnum;
+
+    fn is_known_field<S: AsRef<str>>(s: S) -> bool {
+        Self::Fields::contains(s)
+    }
+}

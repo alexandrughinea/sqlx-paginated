@@ -2,8 +2,8 @@ use heck::{ToKebabCase, ToLowerCamelCase, ToShoutySnakeCase, ToSnakeCase, ToUppe
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use syn::{
-    parse_macro_input, spanned::Spanned, Attribute, Data, DeriveInput, Field, Fields, Ident, LitStr,
-    Type,
+    parse_macro_input, spanned::Spanned, Attribute, Data, DeriveInput, Field, Fields, Ident,
+    LitStr, Type,
 };
 
 #[proc_macro_derive(Fields, attributes(sqlx))]
@@ -46,7 +46,10 @@ fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
     for field in fields {
         match parse_field(&field, rename_all.as_deref())? {
             FieldBehavior::Skip => {}
-            FieldBehavior::Direct { variant_ident, output_name } => {
+            FieldBehavior::Direct {
+                variant_ident,
+                output_name,
+            } => {
                 variants.push(quote! { #variant_ident });
                 as_str_arms.push(quote! {
                     Self::#variant_ident => #output_name
@@ -107,8 +110,14 @@ fn expand(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
 
 enum FieldBehavior {
     Skip,
-    Direct { variant_ident: Ident, output_name: String },
-    Flatten { variant_ident: Ident, ty: Type },
+    Direct {
+        variant_ident: Ident,
+        output_name: String,
+    },
+    Flatten {
+        variant_ident: Ident,
+        ty: Type,
+    },
 }
 
 fn parse_field(field: &Field, rename_all: Option<&str>) -> syn::Result<FieldBehavior> {
@@ -220,4 +229,22 @@ fn type_to_ident(ty: &Type) -> syn::Result<Ident> {
             "flatten fields must be path types",
         )),
     }
+}
+
+#[proc_macro_derive(Paginated)]
+pub fn derive_paginated(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+
+    let struct_ident = input.ident;
+    let enum_ident = format_ident!("{}Field", struct_ident);
+    let generics = input.generics;
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+
+    let expanded = quote! {
+        impl #impl_generics ::sqlx_paginated::Paginated for #struct_ident #ty_generics #where_clause {
+            type Fields = #enum_ident;
+        }
+    };
+
+    TokenStream::from(expanded)
 }

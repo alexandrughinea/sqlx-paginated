@@ -51,7 +51,6 @@ where
     DB: Database + DatabaseQueryDefaults,
     T: for<'r> FromRow<'r, DB::Row> + Send + Unpin + Serialize + Default,
     DB::Arguments: IntoArguments<DB>,
-    for<'c> &'c sqlx::Pool<DB>: sqlx::Executor<'c, Database = DB>,
     usize: sqlx::ColumnIndex<DB::Row>,
     i64: sqlx::Type<DB> + for<'r> sqlx::Decode<'r, DB> + Send + Unpin,
 {

@@ -1,10 +1,9 @@
 use crate::paginated_query_as::internal::quote_identifier;
 use crate::paginated_query_as::models::QuerySortDirection;
+use crate::paginated_query_as::AsExecutor;
 use crate::{FlatQueryParams, PaginatedResponse, QueryParams};
 use serde::Serialize;
-use sqlx::{
-    query::QueryAs, AssertSqlSafe, Database, Execute, Executor, FromRow, IntoArguments, Pool,
-};
+use sqlx::{query::QueryAs, AssertSqlSafe, Database, Execute, FromRow, IntoArguments};
 use std::marker::PhantomData;
 
 type QueryBuilderFn<T, DB> = Box<
@@ -45,7 +44,6 @@ where
     T: for<'r> FromRow<'r, <DB as Database>::Row> + Send + Unpin + Serialize + Default,
     A: IntoArguments<DB> + Send,
     DB::Arguments: IntoArguments<DB>,
-    for<'c> &'c Pool<DB>: Executor<'c, Database = DB>,
     usize: sqlx::ColumnIndex<<DB as Database>::Row>,
     i64: sqlx::Type<DB> + for<'r> sqlx::Decode<'r, DB> + Send + Unpin,
 {
@@ -256,10 +254,13 @@ where
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn fetch_paginated(
+    pub async fn fetch_paginated<'e, E>(
         self,
-        pool: &sqlx::PgPool,
-    ) -> Result<PaginatedResponse<T>, sqlx::Error> {
+        mut executor: E,
+    ) -> Result<PaginatedResponse<T>, sqlx::Error>
+    where
+        E: AsExecutor<sqlx::Postgres>,
+    {
         let base_sql = self.build_base_query();
         let params_ref = &self.params;
         let (conditions, main_arguments) = (self.build_query_fn)(params_ref);
@@ -284,7 +285,7 @@ where
 
             let count: i64 =
                 sqlx::query_scalar_with(AssertSqlSafe(count_sql_str.as_str()), count_arguments)
-                    .fetch_one(pool)
+                    .fetch_one(executor.as_executor())
                     .await?;
 
             let available_pages = match count {
@@ -304,7 +305,7 @@ where
         // For PostgreSQL, PgArguments doesn't have lifetime constraints
         let records =
             sqlx::query_as_with::<sqlx::Postgres, T, _>(AssertSqlSafe(main_sql), main_arguments)
-                .fetch_all(pool)
+                .fetch_all(executor.as_executor())
                 .await?;
 
         Ok(PaginatedResponse {
@@ -411,10 +412,13 @@ where
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn fetch_paginated(
+    pub async fn fetch_paginated<'e, E>(
         self,
-        pool: &sqlx::SqlitePool,
-    ) -> Result<PaginatedResponse<T>, sqlx::Error> {
+        mut executor: E,
+    ) -> Result<PaginatedResponse<T>, sqlx::Error>
+    where
+        E: AsExecutor<sqlx::Sqlite>,
+    {
         let base_sql = self.build_base_query();
         let params_ref = &self.params;
         let (conditions, main_arguments) = (self.build_query_fn)(params_ref);
@@ -440,7 +444,7 @@ where
 
             let count: i64 =
                 sqlx::query_scalar_with(AssertSqlSafe(count_sql_str.as_str()), count_arguments)
-                    .fetch_one(pool)
+                    .fetch_one(executor.as_executor())
                     .await?;
 
             let available_pages = match count {
@@ -459,7 +463,7 @@ where
 
         let records =
             sqlx::query_as_with::<sqlx::Sqlite, T, _>(AssertSqlSafe(main_sql), main_arguments)
-                .fetch_all(pool)
+                .fetch_all(executor.as_executor())
                 .await?;
 
         Ok(PaginatedResponse {

@@ -1,0 +1,18 @@
+[package]
+name = "sqlx-paginated-derive"
+version = "0.4.0"
+edition = "2021"
+authors = ["@alexandrughinea"]
+description = "A flexible, type-safe SQLx query builder for dynamic web APIs, offering seamless pagination, searching, filtering, and sorting."
+license = "MIT"
+repository = "https://github.com/alexandrughinea/sqlx-paginated"
+documentation = "https://docs.rs/sqlx-paginated"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { version = "2", features = ["full"] }
+quote = "1"
+proc-macro2 = "1"
+heck = { version = "^0.5" }

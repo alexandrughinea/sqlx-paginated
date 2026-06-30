@@ -11,8 +11,9 @@ use sqlx_paginated::{
 use testcontainers::runners::AsyncRunner;
 use testcontainers::ContainerAsync;
 use testcontainers_modules::postgres::Postgres as PostgresContainer;
+use sqlx_paginated_derive::Fields;
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, Fields, Default)]
 struct TestUser {
     id: i32,
     first_name: String,
@@ -22,7 +23,7 @@ struct TestUser {
     created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, Fields, Default)]
 struct TestProduct {
     id: i32,
     name: String,

@@ -5,21 +5,21 @@ use crate::paginated_query_as::internal::{
 };
 use crate::paginated_query_as::models::QuerySortDirection;
 use crate::paginated_query_as::models::{QueryFilterCondition, QueryFilterOperator};
-use crate::{PaginatedInfo, QueryParams};
+use crate::{FieldSource, QueryParams};
 use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 
-pub struct QueryParamsBuilder<'q, T: PaginatedInfo> {
+pub struct QueryParamsBuilder<'q, T: FieldSource> {
     query: QueryParams<'q, T>,
 }
 
-impl<T: PaginatedInfo> Default for QueryParamsBuilder<'_, T> {
+impl<T: FieldSource> Default for QueryParamsBuilder<'_, T> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<'q, T: PaginatedInfo> QueryParamsBuilder<'q, T> {
+impl<'q, T: FieldSource> QueryParamsBuilder<'q, T> {
     /// Creates a new `QueryParamsBuilder` with default values.
     ///
     /// Default values include:
@@ -31,9 +31,9 @@ impl<'q, T: PaginatedInfo> QueryParamsBuilder<'q, T> {
     /// # Examples
     ///
     /// ```rust
-    /// use sqlx_paginated::{QueryParamsBuilder, Fields, Paginated};
+    /// use sqlx_paginated::{QueryParamsBuilder, Fields};
     ///
-    /// #[derive(Fields, Paginated)]
+    /// #[derive(Fields)]
     /// struct UserExample {
     ///     name: String
     /// }
@@ -56,9 +56,9 @@ impl<'q, T: PaginatedInfo> QueryParamsBuilder<'q, T> {
     /// # Examples
     ///
     /// ```rust
-    /// use sqlx_paginated::{QueryParamsBuilder, Paginated Fields};
+    /// use sqlx_paginated::{QueryParamsBuilder, Fields};
     ///
-    /// #[derive(Fields, Paginated)]
+    /// #[derive(Fields)]
     /// struct UserExample {
     ///     name: String
     /// }
@@ -82,9 +82,9 @@ impl<'q, T: PaginatedInfo> QueryParamsBuilder<'q, T> {
     /// # Examples
     ///
     /// ```rust
-    /// use sqlx_paginated::{QueryParamsBuilder, QuerySortDirection, Fields, Paginated};
+    /// use sqlx_paginated::{QueryParamsBuilder, QuerySortDirection, Fields};
     ///
-    /// #[derive(Fields, Paginated)]
+    /// #[derive(Fields)]
     /// struct UserExample {
     ///     name: String
     /// }
@@ -115,9 +115,9 @@ impl<'q, T: PaginatedInfo> QueryParamsBuilder<'q, T> {
     /// # Examples
     ///
     /// ```rust
-    /// use sqlx_paginated::{QueryParamsBuilder, QuerySortDirection, Fields, Paginated};
+    /// use sqlx_paginated::{QueryParamsBuilder, QuerySortDirection, Fields};
     ///
-    /// #[derive(Fields, Paginated)]
+    /// #[derive(Fields)]
     /// struct UserExample {
     ///     name: String
     /// }
@@ -150,9 +150,9 @@ impl<'q, T: PaginatedInfo> QueryParamsBuilder<'q, T> {
     ///
     /// ```rust
     /// use chrono::{DateTime, Utc};
-    /// use sqlx_paginated::{QueryParamsBuilder, QuerySortDirection, Paginated, Fields};
+    /// use sqlx_paginated::{QueryParamsBuilder, QuerySortDirection, Fields};
     ///
-    /// #[derive(Fields, Paginated)]
+    /// #[derive(Fields)]
     /// struct UserExample {
     ///     name: String,
     ///     updated_at: DateTime<Utc>
@@ -198,9 +198,9 @@ impl<'q, T: PaginatedInfo> QueryParamsBuilder<'q, T> {
     /// # Examples
     ///
     /// ```rust
-    /// use sqlx_paginated::{QueryParamsBuilder, QueryFilterOperator, Fields, Paginated};
+    /// use sqlx_paginated::{QueryParamsBuilder, QueryFilterOperator, Fields};
     ///
-    /// #[derive(Fields, Paginated)]
+    /// #[derive(Fields)]
     /// struct Product {
     ///     name: String,
     ///     price: f64,
@@ -243,9 +243,9 @@ impl<'q, T: PaginatedInfo> QueryParamsBuilder<'q, T> {
     /// # Examples
     ///
     /// ```rust
-    /// use sqlx_paginated::{QueryParamsBuilder, Fields, Paginated};
+    /// use sqlx_paginated::{QueryParamsBuilder, Fields};
     ///
-    /// #[derive(Fields, Paginated)]
+    /// #[derive(Fields)]
     /// struct User {
     ///     name: String,
     ///     deleted_at: Option<String>,
@@ -282,9 +282,9 @@ impl<'q, T: PaginatedInfo> QueryParamsBuilder<'q, T> {
     /// # Examples
     ///
     /// ```rust
-    /// use sqlx_paginated::{QueryParamsBuilder, Fields, Paginated};
+    /// use sqlx_paginated::{QueryParamsBuilder, Fields};
     ///
-    /// #[derive(Fields, Paginated)]
+    /// #[derive(Fields)]
     /// struct User {
     ///     name: String,
     ///     role: String,
@@ -322,9 +322,9 @@ impl<'q, T: PaginatedInfo> QueryParamsBuilder<'q, T> {
     /// # Examples
     ///
     /// ```rust
-    /// use sqlx_paginated::{QueryParamsBuilder, Fields, Paginated};
+    /// use sqlx_paginated::{QueryParamsBuilder, Fields};
     ///
-    /// #[derive(Fields, Paginated)]
+    /// #[derive(Fields)]
     /// struct User {
     ///     name: String,
     ///     role: String,
@@ -368,9 +368,9 @@ impl<'q, T: PaginatedInfo> QueryParamsBuilder<'q, T> {
     /// # Examples
     ///
     /// ```rust
-    /// use sqlx_paginated::{QueryParamsBuilder, Paginated, Fields};
+    /// use sqlx_paginated::{QueryParamsBuilder, Fields};
     ///
-    /// #[derive(Fields, Paginated)]
+    /// #[derive(Fields)]
     /// struct UserExample {
     ///     name: String,
     ///     status: String,
@@ -413,9 +413,9 @@ impl<'q, T: PaginatedInfo> QueryParamsBuilder<'q, T> {
     ///
     /// ```rust
     /// use std::collections::HashMap;
-    /// use sqlx_paginated::{QueryParamsBuilder, Fields, Paginated};
+    /// use sqlx_paginated::{QueryParamsBuilder, Fields};
     ///
-    /// #[derive(Fields, Paginated)]
+    /// #[derive(Fields)]
     /// struct UserExample {
     ///     name: String,
     ///     status: String,
@@ -466,9 +466,9 @@ impl<'q, T: PaginatedInfo> QueryParamsBuilder<'q, T> {
     ///
     /// ```rust
     /// use std::collections::HashMap;
-    /// use sqlx_paginated::{QueryParamsBuilder, QueryFilterCondition, QueryFilterOperator, Fields, Paginated};
+    /// use sqlx_paginated::{QueryParamsBuilder, QueryFilterCondition, QueryFilterOperator, Fields};
     ///
-    /// #[derive(Fields, Paginated)]
+    /// #[derive(Fields)]
     /// struct Product {
     ///     name: String,
     ///     price: f64,
@@ -514,9 +514,9 @@ impl<'q, T: PaginatedInfo> QueryParamsBuilder<'q, T> {
     ///
     /// ```rust
     /// use chrono::{DateTime, Utc};
-    /// use sqlx_paginated::{QueryParamsBuilder, QuerySortDirection, Paginated, Fields};
+    /// use sqlx_paginated::{QueryParamsBuilder, QuerySortDirection, Fields};
     ///
-    /// #[derive(Fields, Paginated)]
+    /// #[derive(Fields)]
     /// struct UserExample {
     ///     name: String,
     ///     status: String,
@@ -546,9 +546,10 @@ mod tests {
     use crate::paginated_query_as::models::QuerySortDirection;
     use chrono::{DateTime, Utc};
     use std::collections::HashMap;
-    use sqlx_paginated_derive::{Fields, Paginated};
+    use sqlx_paginated_derive::Fields;
 
-    #[derive(Debug, Fields, Paginated)]
+    #[derive(Debug, Fields)]
+    #[sqlx_paginated(crate = "crate")]
     struct TestModel {
         name: String,
         title: String,

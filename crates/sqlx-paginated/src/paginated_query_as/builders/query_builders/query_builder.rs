@@ -1,11 +1,11 @@
 use crate::paginated_query_as::internal::{ColumnProtection, QueryDialect};
 use crate::paginated_query_as::models::{QueryFilterCondition, QueryFilterOperator};
-use crate::{PaginatedInfo, QueryParams};
+use crate::{FieldSource, QueryParams};
 use chrono::{DateTime, Utc};
 use sqlx::{Arguments, Database, Encode, Type};
 use std::marker::PhantomData;
 
-pub struct QueryBuilder<'q, T: PaginatedInfo, DB: Database> {
+pub struct QueryBuilder<'q, T: FieldSource, DB: Database> {
     pub conditions: Vec<String>,
     pub arguments: DB::Arguments,
     pub(crate) protection: Option<ColumnProtection>,
@@ -16,7 +16,7 @@ pub struct QueryBuilder<'q, T: PaginatedInfo, DB: Database> {
 
 impl<'q, T, DB> QueryBuilder<'q, T, DB>
 where
-    T: PaginatedInfo,
+    T: FieldSource,
     DB: Database,
     String: for<'a> Encode<'a, DB> + Type<DB>,
 {
@@ -67,9 +67,9 @@ where
     ///
     /// ```rust
     /// use sqlx::Postgres;
-    /// use sqlx_paginated::{QueryBuilder, QueryParamsBuilder, Paginated, Fields};
+    /// use sqlx_paginated::{QueryBuilder, QueryParamsBuilder, Fields};
     ///
-    /// #[derive(Fields, Paginated)]
+    /// #[derive(Fields)]
     /// struct UserExample {
     ///     name: String
     /// }
@@ -143,9 +143,9 @@ where
     ///
     /// ```rust
     /// use sqlx::Postgres;
-    /// use sqlx_paginated::{QueryBuilder, QueryParamsBuilder, QueryFilterOperator, Paginated, Fields};
+    /// use sqlx_paginated::{QueryBuilder, QueryParamsBuilder, QueryFilterOperator, Fields};
     ///
-    /// #[derive(Fields, Paginated)]
+    /// #[derive(Fields)]
     /// struct Product {
     ///     name: String,
     ///     price: f64,
@@ -269,9 +269,9 @@ where
     /// ```rust
     /// use sqlx::Postgres;
     /// use chrono::{DateTime};
-    /// use sqlx_paginated::{QueryBuilder, QueryParamsBuilder, QueryParams, Paginated, Fields};
+    /// use sqlx_paginated::{QueryBuilder, QueryParamsBuilder, QueryParams, Fields};
     ///
-    /// #[derive(Fields, Paginated)]
+    /// #[derive(Fields)]
     /// struct UserExample {
     ///     name: String
     /// }
@@ -337,9 +337,9 @@ where
     ///
     /// ```rust
     /// use sqlx::Postgres;
-    /// use sqlx_paginated::{QueryBuilder, Fields, Paginated};
+    /// use sqlx_paginated::{QueryBuilder, Fields};
     ///
-    /// #[derive(Fields, Paginated)]
+    /// #[derive(Fields)]
     /// struct UserExample {
     ///     name: String
     /// }
@@ -390,11 +390,9 @@ where
     ///
     /// ```rust
     /// use sqlx::Postgres;
-    /// use sqlx_paginated::{QueryBuilder, Paginated, Fields};
+    /// use sqlx_paginated::{QueryBuilder, Fields};
     ///
-    /// use sqlx_paginated_derive::{Fields, Paginated};
-    ///
-    /// #[derive(Serialize, Default, Fields, Paginated)]
+    /// #[derive(Fields)]
     /// struct UserExample {
     ///     name: String
     /// }
@@ -426,9 +424,9 @@ where
     ///
     /// ```rust
     /// use sqlx::Postgres;
-    /// use sqlx_paginated::{QueryBuilder, Paginated, Fields};
+    /// use sqlx_paginated::{QueryBuilder, Fields};
     ///
-    /// #[derive(Fields, Paginated)]
+    /// #[derive(Fields)]
     /// struct UserExample {
     ///     name: String
     /// }
@@ -462,9 +460,9 @@ where
     ///
     /// ```rust
     /// use sqlx::Postgres;
-    /// use sqlx_paginated::{QueryBuilder, Paginated, Fields};
+    /// use sqlx_paginated::{QueryBuilder, Fields};
     ///
-    /// #[derive(Fields, Paginated)]
+    /// #[derive(Fields)]
     /// struct UserExample {
     ///     name: String
     /// }
@@ -491,9 +489,9 @@ where
     ///
     /// ```rust
     /// use sqlx::Postgres;
-    /// use sqlx_paginated::{QueryBuilder, QueryParamsBuilder, Paginated, Fields};
+    /// use sqlx_paginated::{QueryBuilder, QueryParamsBuilder, Fields};
     ///
-    /// #[derive(Fields, Paginated)]
+    /// #[derive(Fields)]
     /// struct UserExample {
     ///     name: String
     /// }

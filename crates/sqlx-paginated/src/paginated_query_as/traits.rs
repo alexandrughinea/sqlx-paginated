@@ -4,7 +4,7 @@ pub trait FieldEnum {
     fn contains<S: AsRef<str>>(s: S) -> bool;
 }
 
-pub trait PaginatedInfo {
+pub trait FieldSource {
     type Fields: FieldEnum;
 
     fn is_known_field<S: AsRef<str>>(s: S) -> bool {

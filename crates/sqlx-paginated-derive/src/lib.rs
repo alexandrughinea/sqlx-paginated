@@ -15,22 +15,15 @@ pub fn derive_fields(input: TokenStream) -> TokenStream {
     }
 }
 
-#[proc_macro_derive(Paginated, attributes(sqlx_paginated))]
-pub fn derive_paginated(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-    match expand_paginated(input) {
-        Ok(tokens) => tokens.into(),
-        Err(err) => err.to_compile_error().into(),
-    }
-}
-
 fn expand_fields(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
     let struct_ident = input.ident;
     let vis = input.vis;
+    let generics = input.generics;
     let enum_ident = format_ident!("{}Field", struct_ident);
     let rename_all = parse_rename_all(&input.attrs)?;
     let container = ContainerAttrs::from_attrs(&input.attrs)?;
     let crate_path = &container.crate_path;
+    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     let fields = match input.data {
         Data::Struct(data) => match data.fields {
@@ -70,13 +63,14 @@ fn expand_fields(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
                 });
             }
             FieldBehavior::Flatten { variant_ident, ty } => {
-                let child_enum_ident = format_ident!("{}Field", type_to_ident(&ty)?);
-                variants.push(quote! { #variant_ident(#child_enum_ident) });
+                variants.push(quote! {
+                    #variant_ident(<#ty as #crate_path::FieldSource>::Fields)
+                });
                 as_str_arms.push(quote! {
                     Self::#variant_ident(inner) => inner.as_str()
                 });
                 contains_arms.push(quote! {
-                    _ if <#child_enum_ident as #crate_path::FieldEnum>::contains(value) => true,
+                    _ if <#ty as #crate_path::FieldSource>::is_known_field(value) => true,
                 });
             }
         }
@@ -84,11 +78,11 @@ fn expand_fields(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
 
     Ok(quote! {
         #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-        #vis enum #enum_ident {
+        #vis enum #enum_ident #ty_generics #where_clause {
             #(#variants),*
         }
 
-        impl #enum_ident {
+        impl #impl_generics #enum_ident #ty_generics #where_clause {
             pub const fn as_str(&self) -> &'static str {
                 match self {
                     #(#as_str_arms),*
@@ -96,7 +90,7 @@ fn expand_fields(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
             }
         }
 
-        impl #crate_path::FieldEnum for #enum_ident {
+        impl #impl_generics #crate_path::FieldEnum for #enum_ident #ty_generics #where_clause {
             fn as_str(&self) -> &'static str {
                 match self {
                     #(#as_str_arms),*
@@ -112,25 +106,14 @@ fn expand_fields(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
             }
         }
 
-        impl ::std::convert::From<#enum_ident> for ::std::string::String {
-            fn from(value: #enum_ident) -> Self {
+        impl #impl_generics ::std::convert::From<#enum_ident #ty_generics> for ::std::string::String #where_clause {
+            fn from(value: #enum_ident #ty_generics) -> Self {
                 value.as_str().to_owned()
             }
         }
-    })
-}
 
-fn expand_paginated(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
-    let struct_ident = input.ident;
-    let enum_ident = format_ident!("{}Field", struct_ident);
-    let generics = input.generics;
-    let container = ContainerAttrs::from_attrs(&input.attrs)?;
-    let crate_path = &container.crate_path;
-    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
-
-    Ok(quote! {
-        impl #impl_generics #crate_path::PaginatedInfo for #struct_ident #ty_generics #where_clause {
-            type Fields = #enum_ident;
+        impl #impl_generics #crate_path::FieldSource for #struct_ident #ty_generics #where_clause {
+            type Fields = #enum_ident #ty_generics;
         }
     })
 }
@@ -290,19 +273,4 @@ fn apply_rename_rule(name: &str, rule: &str) -> syn::Result<String> {
         }
     };
     Ok(value)
-}
-
-fn type_to_ident(ty: &Type) -> syn::Result<Ident> {
-    match ty {
-        Type::Path(tp) => tp
-            .path
-            .segments
-            .last()
-            .map(|s| s.ident.clone())
-            .ok_or_else(|| syn::Error::new(ty.span(), "unsupported flatten field type")),
-        _ => Err(syn::Error::new(
-            ty.span(),
-            "flatten fields must be path types",
-        )),
-    }
 }

@@ -6,7 +6,7 @@ use crate::paginated_query_as::models::QueryFilterCondition;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::marker::PhantomData;
-use crate::PaginatedInfo;
+use crate::FieldSource;
 
 /// Flattened query parameters suitable for deserializing from HTTP query strings.
 ///
@@ -81,9 +81,9 @@ pub struct FlatQueryParams {
 /// # Examples
 ///
 /// ```rust
-/// use sqlx_paginated::{QueryParams, QueryParamsBuilder, QuerySortDirection, Fields, Paginated};
+/// use sqlx_paginated::{QueryParams, QueryParamsBuilder, QuerySortDirection, Fields};
 ///
-/// #[derive(Fields, Paginated)]
+/// #[derive(Fields)]
 /// struct User {
 ///     name: String,
 ///     email: String,
@@ -96,7 +96,7 @@ pub struct FlatQueryParams {
 ///     .build();
 /// ```
 #[derive(Clone)]
-pub struct QueryParams<'q, T: PaginatedInfo> {
+pub struct QueryParams<'q, T: FieldSource> {
     /// Pagination configuration (page, page_size)
     pub pagination: QueryPaginationParams,
 
@@ -126,7 +126,7 @@ pub struct QueryParams<'q, T: PaginatedInfo> {
 }
 
 // Custom default implementation to not require T to carry default as well
-impl<'q, T: PaginatedInfo> Default for QueryParams<'q, T> {
+impl<'q, T: FieldSource> Default for QueryParams<'q, T> {
     fn default() -> Self {
         Self {
             pagination: Default::default(),
@@ -141,7 +141,7 @@ impl<'q, T: PaginatedInfo> Default for QueryParams<'q, T> {
     }
 }
 
-impl<'q, T: PaginatedInfo> From<FlatQueryParams> for QueryParams<'q, T> {
+impl<'q, T: FieldSource> From<FlatQueryParams> for QueryParams<'q, T> {
     fn from(params: FlatQueryParams) -> Self {
         let filters = params.filters.unwrap_or_default();
 

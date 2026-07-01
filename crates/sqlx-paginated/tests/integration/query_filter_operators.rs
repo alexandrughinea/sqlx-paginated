@@ -1,9 +1,8 @@
 #![allow(clippy::unwrap_used, clippy::indexing_slicing)]
 
-use serde::Serialize;
-use sqlx_paginated::{QueryBuilder, QueryFilterCondition, QueryFilterOperator, QueryParamsBuilder};
+use sqlx_paginated::{QueryBuilder, QueryFilterCondition, QueryFilterOperator, QueryParamsBuilder, Fields};
 
-#[derive(Serialize, Default, Debug)]
+#[derive(Fields, Debug)]
 struct TestProduct {
     id: i64,
     name: String,

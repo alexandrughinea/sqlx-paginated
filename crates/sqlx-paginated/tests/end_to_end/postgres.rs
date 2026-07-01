@@ -5,13 +5,13 @@ use sqlx::postgres::{PgConnectOptions, PgPool, PgPoolOptions, Postgres};
 use sqlx::FromRow;
 use sqlx_paginated::{
     paginated_query_as, PaginatedResponse, QueryFilterOperator, QueryParamsBuilder,
-    QuerySortDirection, Fields, Paginated
+    QuerySortDirection, Fields
 };
 use testcontainers::runners::AsyncRunner;
 use testcontainers::ContainerAsync;
 use testcontainers_modules::postgres::Postgres as PostgresContainer;
 
-#[derive(Debug, Clone, FromRow, Paginated, Fields)]
+#[derive(Debug, Clone, FromRow, Fields)]
 struct TestUser {
     id: i32,
     first_name: String,
@@ -21,7 +21,7 @@ struct TestUser {
     created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, FromRow, Paginated, Fields)]
+#[derive(Debug, Clone, FromRow, Fields)]
 struct TestProduct {
     id: i32,
     name: String,
@@ -480,7 +480,7 @@ async fn test_filter_null_check() {
         .await
         .unwrap();
 
-    #[derive(Debug, Paginated, Fields, FromRow)]
+    #[derive(Debug, Fields, FromRow)]
     struct TestNull {
         id: i32,
         name: String,

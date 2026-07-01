@@ -7,9 +7,9 @@ use serde::{Deserialize, Serialize};
 /// # Examples
 ///
 /// ```rust
-/// use sqlx_paginated::{QuerySortDirection, QueryParamsBuilder, Fields, Paginated};
+/// use sqlx_paginated::{QuerySortDirection, QueryParamsBuilder, Fields};
 ///
-/// #[derive(Fields, Paginated)]
+/// #[derive(Fields)]
 /// struct User {
 ///     name: String,
 ///     created_at: String,

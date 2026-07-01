@@ -1,4 +1,4 @@
-use crate::{PaginatedInfo, QueryParams};
+use crate::{FieldSource, QueryParams};
 use sqlx::Database;
 
 /// Trait for providing database-specific default query building behavior.
@@ -17,14 +17,14 @@ pub trait DatabaseQueryDefaults: Database {
     /// Returns a tuple of (conditions, arguments) to be used in the paginated query.
     fn build_default_query<T>(params: &QueryParams<T>) -> (Vec<String>, Self::Arguments)
     where
-        T: PaginatedInfo;
+        T: FieldSource;
 }
 
 #[cfg(feature = "postgres")]
 impl DatabaseQueryDefaults for sqlx::Postgres {
     fn build_default_query<T>(params: &QueryParams<T>) -> (Vec<String>, Self::Arguments)
     where
-        T: PaginatedInfo,
+        T: FieldSource,
     {
         use crate::paginated_query_as::examples::postgres_examples::build_query_with_safe_defaults;
         build_query_with_safe_defaults::<T>(params)
@@ -35,7 +35,7 @@ impl DatabaseQueryDefaults for sqlx::Postgres {
 impl DatabaseQueryDefaults for sqlx::Sqlite {
     fn build_default_query<T>(params: &QueryParams<T>) -> (Vec<String>, Self::Arguments)
     where
-        T: PaginatedInfo,
+        T: FieldSource,
     {
         use crate::QueryBuilder;
         QueryBuilder::<T, sqlx::Sqlite>::new()

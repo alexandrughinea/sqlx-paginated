@@ -11,12 +11,12 @@ pub mod postgres_examples {
         QueryBuilder, QueryFilterCondition, QueryFilterOperator, QueryParamsBuilder,
         QuerySortDirection
     };
-    use sqlx_paginated_derive::{Fields, Paginated};
+    use sqlx_paginated_derive::{Fields};
     use sqlx::Postgres;
     use std::collections::HashMap;
 
     #[allow(dead_code)]
-    #[derive(Fields, Paginated)]
+    #[derive(Fields)]
     #[sqlx_paginated(crate = "crate")]
     pub struct Product {
         pub id: i64,
@@ -313,9 +313,10 @@ pub mod postgres_examples {
 pub mod sqlite_examples {
     use crate::{QueryBuilder, QueryFilterOperator, QueryParamsBuilder};
     use sqlx::Sqlite;
-    use sqlx_paginated_derive::{Fields, Paginated};
+    use sqlx_paginated_derive::Fields;
 
-    #[derive(Fields, Paginated)]
+    #[derive(Fields)]
+    #[sqlx_paginated(crate = "crate")]
     pub struct Product {
         pub id: i64,
         pub name: String,

@@ -1,4 +1,4 @@
-use crate::{DatabaseQueryDefaults, PaginatedInfo, PaginatedQueryBuilder};
+use crate::{DatabaseQueryDefaults, FieldSource, PaginatedQueryBuilder};
 use sqlx::{Database, FromRow, IntoArguments, SqlSafeStr};
 
 /// Creates a new `PaginatedQueryBuilder` with database-specific defaults.
@@ -20,10 +20,10 @@ use sqlx::{Database, FromRow, IntoArguments, SqlSafeStr};
 /// **PostgreSQL:**
 /// ```rust
 /// use sqlx::Postgres;
-/// use sqlx_paginated::{Fields, Paginated, paginated_query_as};
+/// use sqlx_paginated::{Fields, paginated_query_as};
 ///
 /// # use sqlx::FromRow;
-/// # #[derive(FromRow, Fields, Paginated)]
+/// # #[derive(FromRow, Fields)]
 /// # struct User { name: String }
 /// let builder = paginated_query_as::<User, Postgres>("SELECT * FROM users");
 /// ```
@@ -33,10 +33,10 @@ use sqlx::{Database, FromRow, IntoArguments, SqlSafeStr};
 /// # #[cfg(feature = "sqlite")]
 /// # {
 /// use sqlx::Sqlite;
-/// use sqlx_paginated::{Fields, Paginated, paginated_query_as};
+/// use sqlx_paginated::{Fields, paginated_query_as};
 ///
 /// # use sqlx::FromRow;
-/// # #[derive(FromRow, Fields, Paginated)]
+/// # #[derive(FromRow, Fields)]
 /// # struct User { name: String }
 /// let builder = paginated_query_as::<User, Sqlite>("SELECT * FROM users");
 /// # }
@@ -46,7 +46,7 @@ pub fn paginated_query_as<'q, T, DB>(
 ) -> PaginatedQueryBuilder<'q, T, DB, DB::Arguments>
 where
     DB: Database + DatabaseQueryDefaults,
-    T: for<'r> FromRow<'r, DB::Row> + Send + Unpin + PaginatedInfo,
+    T: for<'r> FromRow<'r, DB::Row> + Send + Unpin + FieldSource,
     DB::Arguments: IntoArguments<DB>,
     usize: sqlx::ColumnIndex<DB::Row>,
     i64: sqlx::Type<DB> + for<'r> sqlx::Decode<'r, DB> + Send + Unpin,

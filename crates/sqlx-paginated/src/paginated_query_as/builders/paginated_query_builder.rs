@@ -1,7 +1,7 @@
 use crate::paginated_query_as::internal::quote_identifier;
 use crate::paginated_query_as::models::QuerySortDirection;
 use crate::paginated_query_as::AsExecutor;
-use crate::{FlatQueryParams, PaginatedInfo, PaginatedResponse, QueryParams};
+use crate::{FlatQueryParams, FieldSource, PaginatedResponse, QueryParams};
 use sqlx::{query::QueryAs, AssertSqlSafe, Database, Execute, FromRow, IntoArguments};
 use std::marker::PhantomData;
 
@@ -12,7 +12,7 @@ type QueryBuilderFn<T, DB> = Box<
 pub struct PaginatedQueryBuilder<'q, T, DB, A>
 where
     DB: Database,
-    T: for<'r> FromRow<'r, <DB as Database>::Row> + Send + Unpin + PaginatedInfo,
+    T: for<'r> FromRow<'r, <DB as Database>::Row> + Send + Unpin + FieldSource,
 {
     base_sql: sqlx::SqlStr,
     params: QueryParams<'q, T>,
@@ -40,7 +40,7 @@ where
 impl<'q, T, DB, A> PaginatedQueryBuilder<'q, T, DB, A>
 where
     DB: Database,
-    T: for<'r> FromRow<'r, <DB as Database>::Row> + Send + Unpin + PaginatedInfo,
+    T: for<'r> FromRow<'r, <DB as Database>::Row> + Send + Unpin + FieldSource,
     A: IntoArguments<DB> + Send,
     DB::Arguments: IntoArguments<DB>,
     usize: sqlx::ColumnIndex<<DB as Database>::Row>,
@@ -62,9 +62,9 @@ where
     ///
     /// ```rust
     /// use sqlx::{FromRow, Postgres};
-    /// use sqlx_paginated::{PaginatedQueryBuilder, Paginated, Fields};
+    /// use sqlx_paginated::{PaginatedQueryBuilder, Fields};
     ///
-    /// #[derive(Fields, FromRow, Paginated)]
+    /// #[derive(Fields, FromRow)]
     /// struct UserExample {
     ///     name: String
     /// }
@@ -170,7 +170,7 @@ where
 #[cfg(feature = "postgres")]
 impl<'q, T, A> PaginatedQueryBuilder<'q, T, sqlx::Postgres, A>
 where
-    T: for<'r> FromRow<'r, <sqlx::Postgres as sqlx::Database>::Row> + PaginatedInfo
+    T: for<'r> FromRow<'r, <sqlx::Postgres as sqlx::Database>::Row> + FieldSource
         + Send
         + Unpin,
     A: IntoArguments<sqlx::Postgres> + Send,
@@ -191,9 +191,9 @@ where
     ///
     /// ```rust
     /// use sqlx::{FromRow, Postgres};
-    /// use sqlx_paginated::{PaginatedQueryBuilder, Paginated, Fields};
+    /// use sqlx_paginated::{PaginatedQueryBuilder, Fields};
     ///
-    /// #[derive(Fields, FromRow, Paginated)]
+    /// #[derive(Fields, FromRow)]
     /// struct UserExample {
     ///     name: String
     /// }
@@ -226,9 +226,9 @@ where
     ///
     /// ```rust,no_run
     /// use sqlx::{FromRow, PgPool, Postgres};
-    /// use sqlx_paginated::{PaginatedQueryBuilder, QueryParamsBuilder, Paginated, Fields};
+    /// use sqlx_paginated::{PaginatedQueryBuilder, QueryParamsBuilder, Fields};
     ///
-    /// #[derive(Fields, FromRow, Paginated)]
+    /// #[derive(Fields, FromRow)]
     /// struct User {
     ///     id: i32,
     ///     name: String,
@@ -314,7 +314,7 @@ where
 #[cfg(feature = "sqlite")]
 impl<'q, T, A> PaginatedQueryBuilder<'q, T, sqlx::Sqlite, A>
 where
-    T: for<'r> FromRow<'r, <sqlx::Sqlite as sqlx::Database>::Row> + PaginatedInfo
+    T: for<'r> FromRow<'r, <sqlx::Sqlite as sqlx::Database>::Row> + FieldSource
         + Send
         + Unpin,
     A: IntoArguments<sqlx::Sqlite> + Send,
@@ -335,9 +335,9 @@ where
     ///
     /// ```rust
     /// use sqlx::{FromRow, Sqlite};
-    /// use sqlx_paginated::{Fields, Paginated, PaginatedQueryBuilder};
+    /// use sqlx_paginated::{Fields, PaginatedQueryBuilder};
     ///
-    /// #[derive(Fields, FromRow, Paginated)]
+    /// #[derive(Fields, FromRow)]
     /// struct UserExample {
     ///     name: String
     /// }
@@ -380,9 +380,9 @@ where
     ///
     /// ```rust,no_run
     /// use sqlx::{FromRow, SqlitePool, Sqlite};
-    /// use sqlx_paginated::{Fields, Paginated, PaginatedQueryBuilder, QueryParamsBuilder};
+    /// use sqlx_paginated::{Fields, PaginatedQueryBuilder, QueryParamsBuilder};
     ///
-    /// #[derive(Fields, FromRow, Paginated)]
+    /// #[derive(Fields, FromRow)]
     /// struct User {
     ///     id: i32,
     ///     name: String,

@@ -3,7 +3,7 @@
 #[cfg(feature = "postgres")]
 use crate::paginated_query_as::{QueryParamsBuilder};
 #[cfg(feature = "postgres")]
-use crate::{paginated_query_as, QueryBuilder, Paginated, Fields};
+use crate::{paginated_query_as, QueryBuilder, Fields};
 #[cfg(feature = "postgres")]
 use crate::{PaginatedResponse, QuerySortDirection};
 #[cfg(feature = "postgres")]
@@ -14,7 +14,7 @@ use sqlx::{Arguments, FromRow, PgPool, Postgres};
 use std::collections::HashMap;
 
 #[cfg(feature = "postgres")]
-#[derive(Fields, Paginated, FromRow)]
+#[derive(Fields, FromRow)]
 #[allow(dead_code)]
 #[sqlx_paginated(crate = "crate")]
 pub struct UserExample {

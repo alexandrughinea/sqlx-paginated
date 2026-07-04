@@ -1,5 +1,6 @@
 use sqlx::{pool::PoolConnection, Database, Executor, Pool};
 
+/// A wrapper trait that provides a SQLx executor from a pool, pool connection or regular connection.
 pub trait AsExecutor<DB: Database> {
     type Executor<'a>: Executor<'a, Database = DB>
     where

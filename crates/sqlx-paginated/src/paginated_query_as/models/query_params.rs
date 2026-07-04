@@ -3,10 +3,10 @@ use crate::paginated_query_as::internal::{
     QuerySortParams,
 };
 use crate::paginated_query_as::models::QueryFilterCondition;
+use crate::FieldSource;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::marker::PhantomData;
-use crate::FieldSource;
 
 /// Flattened query parameters suitable for deserializing from HTTP query strings.
 ///

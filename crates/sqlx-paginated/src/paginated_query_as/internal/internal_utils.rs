@@ -155,7 +155,7 @@ mod tests {
         assert_eq!(quote_identifier("column@db"), "\"column@db\"");
         assert_eq!(quote_identifier("user#1"), "\"user#1\"");
     }
-    
+
     #[test]
     fn test_extract_digits_from_strings() {
         assert_eq!(extract_digits_from_strings("123abc456"), "123456");

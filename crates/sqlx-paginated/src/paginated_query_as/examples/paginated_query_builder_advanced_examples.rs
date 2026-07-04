@@ -1,9 +1,9 @@
 #![allow(clippy::unwrap_used)]
 
 #[cfg(feature = "postgres")]
-use crate::paginated_query_as::{QueryParamsBuilder};
+use crate::paginated_query_as::QueryParamsBuilder;
 #[cfg(feature = "postgres")]
-use crate::{paginated_query_as, QueryBuilder, Fields};
+use crate::{paginated_query_as, Fields, QueryBuilder};
 #[cfg(feature = "postgres")]
 use crate::{PaginatedResponse, QuerySortDirection};
 #[cfg(feature = "postgres")]
@@ -34,10 +34,13 @@ pub async fn paginated_query_builder_advanced_example(
     let some_extra_filters =
         HashMap::from([("a", Some("1".to_string())), ("b", Some("2".to_string()))]);
     let initial_params = QueryParamsBuilder::<UserExample>::new()
-        .with_search("john", vec!["name", "email"])
+        .with_search(
+            "john",
+            vec![UserExampleField::Name, UserExampleField::Email],
+        )
         .with_pagination(1, 10)
         .with_date_range(Some(Utc::now()), None, None::<String>)
-        .with_filter("status", Some("active"))
+        .with_filter(UserExampleField::Status, Some("active"))
         .with_filters(some_extra_filters)
         .with_sort("created_at", QuerySortDirection::Descending)
         .build();

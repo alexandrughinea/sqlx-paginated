@@ -1,7 +1,7 @@
 use crate::paginated_query_as::internal::quote_identifier;
 use crate::paginated_query_as::models::QuerySortDirection;
 use crate::paginated_query_as::AsExecutor;
-use crate::{FlatQueryParams, FieldSource, PaginatedResponse, QueryParams};
+use crate::{FieldSource, FlatQueryParams, PaginatedResponse, QueryParams};
 use sqlx::{query::QueryAs, AssertSqlSafe, Database, Execute, FromRow, IntoArguments};
 use std::marker::PhantomData;
 
@@ -170,9 +170,7 @@ where
 #[cfg(feature = "postgres")]
 impl<'q, T, A> PaginatedQueryBuilder<'q, T, sqlx::Postgres, A>
 where
-    T: for<'r> FromRow<'r, <sqlx::Postgres as sqlx::Database>::Row> + FieldSource
-        + Send
-        + Unpin,
+    T: for<'r> FromRow<'r, <sqlx::Postgres as sqlx::Database>::Row> + FieldSource + Send + Unpin,
     A: IntoArguments<sqlx::Postgres> + Send,
 {
     /// Creates a new `PaginatedQueryBuilder` for PostgreSQL with default settings.
@@ -314,9 +312,7 @@ where
 #[cfg(feature = "sqlite")]
 impl<'q, T, A> PaginatedQueryBuilder<'q, T, sqlx::Sqlite, A>
 where
-    T: for<'r> FromRow<'r, <sqlx::Sqlite as sqlx::Database>::Row> + FieldSource
-        + Send
-        + Unpin,
+    T: for<'r> FromRow<'r, <sqlx::Sqlite as sqlx::Database>::Row> + FieldSource + Send + Unpin,
     A: IntoArguments<sqlx::Sqlite> + Send,
 {
     /// Creates a new `PaginatedQueryBuilder` for SQLite with default settings.

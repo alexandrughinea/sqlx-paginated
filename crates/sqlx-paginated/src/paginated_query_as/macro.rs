@@ -15,7 +15,7 @@
 /// use sqlx_paginated_derive::Fields;
 ///
 /// # use sqlx::FromRow;
-/// # 
+/// #
 /// # #[derive(FromRow, Fields)]
 /// # struct User { name: String }
 /// let builder = paginated_query_as!(User, Postgres, "SELECT * FROM users");

@@ -9,10 +9,10 @@
 pub mod postgres_examples {
     use crate::{
         QueryBuilder, QueryFilterCondition, QueryFilterOperator, QueryParamsBuilder,
-        QuerySortDirection
+        QuerySortDirection,
     };
-    use sqlx_paginated_derive::{Fields};
     use sqlx::Postgres;
+    use sqlx_paginated_derive::Fields;
     use std::collections::HashMap;
 
     #[allow(dead_code)]
@@ -91,8 +91,12 @@ pub mod postgres_examples {
     /// _ matches a single character
     pub fn example_like_patterns() {
         let params = QueryParamsBuilder::<Product>::new()
-            .with_filter_operator("name", QueryFilterOperator::Like, "%laptop%")
-            .with_filter_operator("category", QueryFilterOperator::NotLike, "%test%")
+            .with_filter_operator(ProductField::Name, QueryFilterOperator::Like, "%laptop%")
+            .with_filter_operator(
+                ProductField::Category,
+                QueryFilterOperator::NotLike,
+                "%test%",
+            )
             .build();
 
         // Generates: WHERE LOWER("name") LIKE LOWER($1) AND LOWER("category") NOT LIKE LOWER($2)
@@ -106,7 +110,11 @@ pub mod postgres_examples {
     /// Filter records where a field does not equal a specific value.
     pub fn example_not_equal() {
         let params = QueryParamsBuilder::<Product>::new()
-            .with_filter_operator("status", QueryFilterOperator::NotEqual, "deleted")
+            .with_filter_operator(
+                ProductField::Status,
+                QueryFilterOperator::NotEqual,
+                "deleted",
+            )
             .build();
 
         // Generates: WHERE "status" != $1
@@ -122,17 +130,24 @@ pub mod postgres_examples {
     pub fn example_complex_filtering() {
         let params = QueryParamsBuilder::<Product>::new()
             // Price range
-            .with_filter_operator("price", QueryFilterOperator::GreaterOrEqual, "10.00")
+            .with_filter_operator(
+                ProductField::Price,
+                QueryFilterOperator::GreaterOrEqual,
+                "10.00",
+            )
             // Available stock
-            .with_filter_operator("stock", QueryFilterOperator::GreaterThan, "0")
+            .with_filter_operator(ProductField::Stock, QueryFilterOperator::GreaterThan, "0")
             // Active status
-            .with_filter("status", Some("active"))
+            .with_filter(ProductField::Status, Some("active"))
             // Not deleted
-            .with_filter_null("deleted_at", true)
+            .with_filter_null(ProductField::DeletedAt, true)
             // Specific categories
-            .with_filter_in("category", vec!["electronics", "computers", "accessories"])
+            .with_filter_in(
+                ProductField::Category,
+                vec!["electronics", "computers", "accessories"],
+            )
             // Sorting
-            .with_sort("price", QuerySortDirection::Ascending)
+            .with_sort(ProductField::Price, QuerySortDirection::Ascending)
             // Pagination
             .with_pagination(1, 20)
             .build();
@@ -150,10 +165,22 @@ pub mod postgres_examples {
     /// directly and pass them in a HashMap.
     pub fn example_filter_conditions() {
         let mut filters = HashMap::new();
-        filters.insert("price", QueryFilterCondition::greater_than("50.00"));
-        filters.insert("stock", QueryFilterCondition::less_or_equal("100"));
-        filters.insert("status", QueryFilterCondition::not_equal("deleted"));
-        filters.insert("deleted_at", QueryFilterCondition::is_null());
+        filters.insert(
+            ProductField::Price.as_str(),
+            QueryFilterCondition::greater_than("50.00"),
+        );
+        filters.insert(
+            ProductField::Stock.as_str(),
+            QueryFilterCondition::less_or_equal("100"),
+        );
+        filters.insert(
+            ProductField::Status.as_str(),
+            QueryFilterCondition::not_equal("deleted"),
+        );
+        filters.insert(
+            ProductField::DeletedAt.as_str(),
+            QueryFilterCondition::is_null(),
+        );
 
         let params = QueryParamsBuilder::<Product>::new()
             .with_filter_conditions(filters)
@@ -170,8 +197,8 @@ pub mod postgres_examples {
     pub fn example_backward_compatibility() {
         // Old style (still works)
         let params = QueryParamsBuilder::<Product>::new()
-            .with_filter("status", Some("active"))
-            .with_filter("category", Some("electronics"))
+            .with_filter(ProductField::Status, Some("active"))
+            .with_filter(ProductField::Category, Some("electronics"))
             .build();
 
         // Generates: WHERE "status" = $1 AND "category" = $2
@@ -191,19 +218,23 @@ pub mod postgres_examples {
 
         let params = QueryParamsBuilder::<Product>::new()
             // Text search across name and category
-            .with_search("laptop", vec!["name", "category"])
+            .with_search("laptop", vec![ProductField::Name, ProductField::Category])
             // Price range: $500 to $2000
-            .with_filter_operator("price", QueryFilterOperator::GreaterOrEqual, "500")
+            .with_filter_operator(
+                ProductField::Price,
+                QueryFilterOperator::GreaterOrEqual,
+                "500",
+            )
             // In stock only
-            .with_filter_operator("stock", QueryFilterOperator::GreaterThan, "0")
+            .with_filter_operator(ProductField::Stock, QueryFilterOperator::GreaterThan, "0")
             // Active products
-            .with_filter("status", Some("active"))
+            .with_filter(ProductField::Status, Some("active"))
             // Specific categories
-            .with_filter_in("category", vec!["computers", "electronics"])
+            .with_filter_in(ProductField::Category, vec!["computers", "electronics"])
             // Not deleted
-            .with_filter_null("deleted_at", true)
+            .with_filter_null(ProductField::DeletedAt, true)
             // Sort by price ascending
-            .with_sort("price", QuerySortDirection::Ascending)
+            .with_sort(ProductField::Price, QuerySortDirection::Ascending)
             // First page, 24 items
             .with_pagination(1, 24)
             .build();
@@ -323,6 +354,7 @@ pub mod sqlite_examples {
         pub price: f64,
         pub stock: i32,
         pub status: String,
+        pub deleted_at: Option<String>,
     }
 
     /// Example: Using filter operators with SQLite
@@ -331,9 +363,13 @@ pub mod sqlite_examples {
     /// SQLite uses ? placeholders instead of $1, $2, etc.
     pub fn example_sqlite_filtering() {
         let params = QueryParamsBuilder::<Product>::new()
-            .with_filter_operator("price", QueryFilterOperator::GreaterThan, "10.00")
-            .with_filter_in("status", vec!["active", "pending"])
-            .with_filter_null("deleted_at", true)
+            .with_filter_operator(
+                ProductField::Price,
+                QueryFilterOperator::GreaterThan,
+                "10.00",
+            )
+            .with_filter_in(ProductField::Status, vec!["active", "pending"])
+            .with_filter_null(ProductField::DeletedAt, true)
             .build();
 
         // Generates: WHERE "price" > ? AND "status" IN (?, ?) AND "deleted_at" IS NULL

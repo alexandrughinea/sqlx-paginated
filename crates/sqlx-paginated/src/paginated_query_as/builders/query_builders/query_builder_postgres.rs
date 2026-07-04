@@ -1,4 +1,4 @@
-use crate::paginated_query_as::internal::{ColumnProtection, PostgresDialect, };
+use crate::paginated_query_as::internal::{ColumnProtection, PostgresDialect};
 use crate::{FieldSource, QueryBuilder};
 use std::marker::PhantomData;
 

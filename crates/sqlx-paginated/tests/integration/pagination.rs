@@ -1,8 +1,9 @@
 #![allow(clippy::unwrap_used, clippy::indexing_slicing)]
 
-use sqlx_paginated::{QueryBuilder, QueryParamsBuilder, QuerySortDirection, Fields};
+use sqlx_paginated::{Fields, QueryBuilder, QueryParamsBuilder, QuerySortDirection};
 
 #[derive(Fields, Debug)]
+#[allow(dead_code)]
 struct TestUser {
     id: i64,
     name: String,
@@ -31,7 +32,7 @@ mod postgres_tests {
     fn test_pagination_with_sorting() {
         let params = QueryParamsBuilder::<TestUser>::new()
             .with_pagination(1, 10)
-            .with_sort("email", QuerySortDirection::Ascending)
+            .with_sort(TestUserField::Email, QuerySortDirection::Ascending)
             .build();
 
         assert_eq!(params.pagination.page, 1);
@@ -43,7 +44,7 @@ mod postgres_tests {
     #[test]
     fn test_descending_sort() {
         let params = QueryParamsBuilder::<TestUser>::new()
-            .with_sort("created_at", QuerySortDirection::Descending)
+            .with_sort(TestUserField::CreatedAt, QuerySortDirection::Descending)
             .build();
 
         assert_eq!(params.sort.sort_column, "created_at");
@@ -53,7 +54,7 @@ mod postgres_tests {
     #[test]
     fn test_search_functionality() {
         let params = QueryParamsBuilder::<TestUser>::new()
-            .with_search("john", vec!["name", "email"])
+            .with_search("john", vec![TestUserField::Name, TestUserField::Email])
             .build();
 
         let (conditions, _args) = QueryBuilder::<TestUser, Postgres>::new()
@@ -77,7 +78,7 @@ mod postgres_tests {
             .into();
 
         let params = QueryParamsBuilder::<TestUser>::new()
-            .with_date_range(Some(start), Some(end), Some("created_at"))
+            .with_date_range(Some(start), Some(end), Some(TestUserField::CreatedAt))
             .build();
 
         let (conditions, _args) = QueryBuilder::<TestUser, Postgres>::new()
@@ -93,9 +94,9 @@ mod postgres_tests {
     fn test_combined_pagination_filters_search() {
         let params = QueryParamsBuilder::<TestUser>::new()
             .with_pagination(1, 25)
-            .with_filter("status", Some("active"))
-            .with_search("test", vec!["name", "email"])
-            .with_sort("created_at", QuerySortDirection::Descending)
+            .with_filter(TestUserField::Status, Some("active"))
+            .with_search("test", vec![TestUserField::Name, TestUserField::Email])
+            .with_sort(TestUserField::CreatedAt, QuerySortDirection::Descending)
             .build();
 
         let (conditions, _args) = QueryBuilder::<TestUser, Postgres>::new()
@@ -122,7 +123,7 @@ mod postgres_tests {
     #[test]
     fn test_empty_search_no_conditions() {
         let params = QueryParamsBuilder::<TestUser>::new()
-            .with_search("", vec!["name"])
+            .with_search("", vec![TestUserField::Name])
             .build();
 
         let (conditions, _args) = QueryBuilder::<TestUser, Postgres>::new()
@@ -135,8 +136,8 @@ mod postgres_tests {
     #[test]
     fn test_multiple_filters() {
         let params = QueryParamsBuilder::<TestUser>::new()
-            .with_filter("status", Some("active"))
-            .with_filter("email", Some("test@example.com"))
+            .with_filter(TestUserField::Status, Some("active"))
+            .with_filter(TestUserField::Email, Some("test@example.com"))
             .build();
 
         let (conditions, _args) = QueryBuilder::<TestUser, Postgres>::new()
@@ -165,7 +166,7 @@ mod sqlite_tests {
     #[test]
     fn test_sorting_sqlite() {
         let params = QueryParamsBuilder::<TestUser>::new()
-            .with_sort("name", QuerySortDirection::Ascending)
+            .with_sort(TestUserField::Name, QuerySortDirection::Ascending)
             .build();
 
         assert_eq!(params.sort.sort_column, "name");
@@ -175,7 +176,7 @@ mod sqlite_tests {
     #[test]
     fn test_search_sqlite() {
         let params = QueryParamsBuilder::<TestUser>::new()
-            .with_search("search term", vec!["name"])
+            .with_search("search term", vec![TestUserField::Name])
             .build();
 
         let (conditions, _args) = QueryBuilder::<TestUser, Sqlite>::new()
@@ -191,7 +192,7 @@ mod sqlite_tests {
     #[test]
     fn test_filters_sqlite() {
         let params = QueryParamsBuilder::<TestUser>::new()
-            .with_filter("status", Some("active"))
+            .with_filter(TestUserField::Status, Some("active"))
             .build();
 
         let (conditions, _args) = QueryBuilder::<TestUser, Sqlite>::new()
@@ -207,7 +208,14 @@ mod sqlite_tests {
         use sqlx::Arguments;
 
         let params = QueryParamsBuilder::<TestUser>::new()
-            .with_search("Smith", vec!["name", "email", "status"])
+            .with_search(
+                "Smith",
+                vec![
+                    TestUserField::Name,
+                    TestUserField::Email,
+                    TestUserField::Status,
+                ],
+            )
             .build();
 
         let (conditions, args) = QueryBuilder::<TestUser, Sqlite>::new()
@@ -244,7 +252,7 @@ mod sqlite_tests {
 
         // One column = one binding
         let params_1 = QueryParamsBuilder::<TestUser>::new()
-            .with_search("test", vec!["name"])
+            .with_search("test", vec![TestUserField::Name])
             .build();
         let (_, args_1) = QueryBuilder::<TestUser, Sqlite>::new()
             .with_search(&params_1)
@@ -253,7 +261,7 @@ mod sqlite_tests {
 
         // Two columns = two bindings
         let params_2 = QueryParamsBuilder::<TestUser>::new()
-            .with_search("test", vec!["name", "email"])
+            .with_search("test", vec![TestUserField::Name, TestUserField::Email])
             .build();
         let (_, args_2) = QueryBuilder::<TestUser, Sqlite>::new()
             .with_search(&params_2)
@@ -262,7 +270,14 @@ mod sqlite_tests {
 
         // Three columns = three bindings
         let params_3 = QueryParamsBuilder::<TestUser>::new()
-            .with_search("test", vec!["name", "email", "status"])
+            .with_search(
+                "test",
+                vec![
+                    TestUserField::Name,
+                    TestUserField::Email,
+                    TestUserField::Status,
+                ],
+            )
             .build();
         let (_, args_3) = QueryBuilder::<TestUser, Sqlite>::new()
             .with_search(&params_3)
@@ -292,9 +307,9 @@ fn test_sort_direction_enum() {
 fn test_builder_chaining() {
     let params = QueryParamsBuilder::<TestUser>::new()
         .with_pagination(2, 50)
-        .with_sort("email", QuerySortDirection::Ascending)
-        .with_filter("status", Some("active"))
-        .with_search("john", vec!["name", "email"])
+        .with_sort(TestUserField::Email, QuerySortDirection::Ascending)
+        .with_filter(TestUserField::Status, Some("active"))
+        .with_search("john", vec![TestUserField::Name, TestUserField::Email])
         .build();
 
     assert_eq!(params.pagination.page, 2);

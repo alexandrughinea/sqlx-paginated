@@ -29,7 +29,7 @@ where
     /// # Returns
     ///
     /// Returns `true` if the column exists in the valid columns list, `false` otherwise.
-    pub(crate) fn has_column(&self, column: &str) -> bool { 
+    pub(crate) fn has_column(&self, column: &str) -> bool {
         T::is_known_field(column)
     }
 

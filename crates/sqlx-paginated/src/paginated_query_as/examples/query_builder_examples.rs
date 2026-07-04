@@ -3,9 +3,9 @@ use crate::{QueryBuilder, QueryParams};
 #[cfg(feature = "postgres")]
 pub mod postgres_examples {
     use super::*;
+    use crate::FieldSource;
     use sqlx::postgres::PgArguments;
     use sqlx::Postgres;
-    use crate::{FieldSource};
 
     #[allow(dead_code)]
     pub fn build_query_with_disabled_protection<T>(
@@ -39,10 +39,11 @@ pub mod postgres_examples {
         use super::*;
         use crate::QueryParamsBuilder;
         use chrono::{DateTime, Utc};
-        use sqlx_paginated_derive::{Fields};
+        use sqlx_paginated_derive::Fields;
 
         #[derive(Fields)]
         #[sqlx_paginated(crate = "crate")]
+        #[allow(dead_code)]
         struct TestModel {
             name: String,
             title: String,
@@ -69,7 +70,7 @@ pub mod postgres_examples {
         #[test]
         fn test_empty_search_query() {
             let params = QueryParamsBuilder::<TestModel>::new()
-                .with_search("   ", vec!["name"])
+                .with_search("   ", vec![TestModelField::Name])
                 .build();
 
             let (conditions, _) = build_query_with_safe_defaults::<TestModel>(&params);
@@ -81,9 +82,9 @@ pub mod postgres_examples {
 #[cfg(feature = "sqlite")]
 pub mod sqlite_examples {
     use super::*;
+    use crate::FieldSource;
     use sqlx::sqlite::SqliteArguments;
     use sqlx::Sqlite;
-    use crate::FieldSource;
 
     #[allow(dead_code)]
     pub fn build_query_with_safe_defaults<T>(
@@ -123,6 +124,7 @@ pub mod sqlite_examples {
 
         #[derive(Debug, Fields)]
         #[sqlx_paginated(crate = "crate")]
+        #[allow(dead_code)]
         struct TestModel {
             name: String,
             title: String,
@@ -136,7 +138,7 @@ pub mod sqlite_examples {
         #[test]
         fn test_empty_search_query_sqlite() {
             let params = QueryParamsBuilder::<TestModel>::new()
-                .with_search("   ", vec!["name"])
+                .with_search("   ", vec![TestModelField::Name])
                 .build();
 
             let (conditions, _) =

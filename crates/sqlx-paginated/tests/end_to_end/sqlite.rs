@@ -1,15 +1,15 @@
 #![allow(clippy::unwrap_used, clippy::indexing_slicing)]
 
 use chrono::Utc;
-use serde::{Deserialize, Serialize};
 use sqlx::sqlite::{Sqlite, SqlitePool, SqlitePoolOptions};
 use sqlx::FromRow;
 use sqlx_paginated::{
-    paginated_query_as, PaginatedResponse, QueryFilterOperator, QueryParamsBuilder,
+    paginated_query_as, Fields, PaginatedResponse, QueryFilterOperator, QueryParamsBuilder,
     QuerySortDirection,
 };
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow, Default)]
+#[derive(Debug, Clone, FromRow, Fields)]
+#[allow(dead_code)]
 struct TestUser {
     id: String,
     first_name: String,
@@ -19,7 +19,8 @@ struct TestUser {
     created_at: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow, Default)]
+#[derive(Debug, Clone, FromRow, Fields)]
+#[allow(dead_code)]
 struct TestProduct {
     id: String,
     name: String,
@@ -352,7 +353,7 @@ async fn test_sort_ascending() {
     seed_users(&pool).await.unwrap();
 
     let params = QueryParamsBuilder::<TestUser>::new()
-        .with_sort("first_name", QuerySortDirection::Ascending)
+        .with_sort(TestUserField::FirstName, QuerySortDirection::Ascending)
         .build();
 
     let result: PaginatedResponse<TestUser> =
@@ -372,7 +373,7 @@ async fn test_sort_descending() {
     seed_users(&pool).await.unwrap();
 
     let params = QueryParamsBuilder::<TestUser>::new()
-        .with_sort("first_name", QuerySortDirection::Descending)
+        .with_sort(TestUserField::FirstName, QuerySortDirection::Descending)
         .build();
 
     let result: PaginatedResponse<TestUser> =
@@ -392,7 +393,7 @@ async fn test_search_single_column() {
     seed_users(&pool).await.unwrap();
 
     let params = QueryParamsBuilder::<TestUser>::new()
-        .with_search("john", vec!["first_name"])
+        .with_search("john", vec![TestUserField::FirstName])
         .build();
 
     let result: PaginatedResponse<TestUser> =
@@ -412,7 +413,14 @@ async fn test_search_multiple_columns() {
     seed_users(&pool).await.unwrap();
 
     let params = QueryParamsBuilder::<TestUser>::new()
-        .with_search("smith", vec!["first_name", "last_name", "email"])
+        .with_search(
+            "smith",
+            vec![
+                TestUserField::FirstName,
+                TestUserField::LastName,
+                TestUserField::Email,
+            ],
+        )
         .build();
 
     let result: PaginatedResponse<TestUser> =
@@ -432,7 +440,7 @@ async fn test_search_case_insensitive() {
     seed_users(&pool).await.unwrap();
 
     let params = QueryParamsBuilder::<TestUser>::new()
-        .with_search("JOHN", vec!["first_name"])
+        .with_search("JOHN", vec![TestUserField::FirstName])
         .build();
 
     let result: PaginatedResponse<TestUser> =
@@ -451,7 +459,7 @@ async fn test_filter_equality() {
     seed_users(&pool).await.unwrap();
 
     let params = QueryParamsBuilder::<TestUser>::new()
-        .with_filter("confirmed", Some("1"))
+        .with_filter(TestUserField::Confirmed, Some("1"))
         .build();
 
     let result: PaginatedResponse<TestUser> =
@@ -471,7 +479,11 @@ async fn test_filter_greater_than() {
     seed_products(&pool).await.unwrap();
 
     let params = QueryParamsBuilder::<TestProduct>::new()
-        .with_filter_operator("price", QueryFilterOperator::GreaterThan, "100.0")
+        .with_filter_operator(
+            TestProductField::Price,
+            QueryFilterOperator::GreaterThan,
+            "100.0",
+        )
         .build();
 
     let result: PaginatedResponse<TestProduct> =
@@ -491,7 +503,7 @@ async fn test_filter_in_operator() {
     seed_products(&pool).await.unwrap();
 
     let params = QueryParamsBuilder::<TestProduct>::new()
-        .with_filter_in("category", vec!["computers", "electronics"])
+        .with_filter_in(TestProductField::Category, vec!["computers", "electronics"])
         .build();
 
     let result: PaginatedResponse<TestProduct> =
@@ -539,7 +551,8 @@ async fn test_filter_null_check() {
         .await
         .unwrap();
 
-    #[derive(Debug, Serialize, FromRow, Default)]
+    #[derive(Debug, FromRow, Fields)]
+    #[allow(dead_code)]
     struct TestNull {
         id: String,
         name: String,
@@ -547,7 +560,7 @@ async fn test_filter_null_check() {
     }
 
     let params = QueryParamsBuilder::<TestNull>::new()
-        .with_filter_null("deleted_at", true)
+        .with_filter_null(TestNullField::DeletedAt, true)
         .build();
 
     let result: PaginatedResponse<TestNull> =
@@ -567,10 +580,17 @@ async fn test_combined_search_filter_sort_pagination() {
     seed_products(&pool).await.unwrap();
 
     let params = QueryParamsBuilder::<TestProduct>::new()
-        .with_search("laptop", vec!["name", "description"])
-        .with_filter("status", Some("active"))
-        .with_filter_operator("price", QueryFilterOperator::GreaterOrEqual, "50.0")
-        .with_sort("price", QuerySortDirection::Ascending)
+        .with_search(
+            "laptop",
+            vec![TestProductField::Name, TestProductField::Description],
+        )
+        .with_filter(TestProductField::Status, Some("active"))
+        .with_filter_operator(
+            TestProductField::Price,
+            QueryFilterOperator::GreaterOrEqual,
+            "50.0",
+        )
+        .with_sort(TestProductField::Price, QuerySortDirection::Ascending)
         .with_pagination(1, 10)
         .build();
 
@@ -596,10 +616,18 @@ async fn test_complex_filtering_scenario() {
     seed_products(&pool).await.unwrap();
 
     let params = QueryParamsBuilder::<TestProduct>::new()
-        .with_filter_in("category", vec!["computers", "electronics"])
-        .with_filter_operator("stock", QueryFilterOperator::GreaterThan, "0")
-        .with_filter_operator("price", QueryFilterOperator::GreaterOrEqual, "100.0")
-        .with_sort("price", QuerySortDirection::Descending)
+        .with_filter_in(TestProductField::Category, vec!["computers", "electronics"])
+        .with_filter_operator(
+            TestProductField::Stock,
+            QueryFilterOperator::GreaterThan,
+            "0",
+        )
+        .with_filter_operator(
+            TestProductField::Price,
+            QueryFilterOperator::GreaterOrEqual,
+            "100.0",
+        )
+        .with_sort(TestProductField::Price, QuerySortDirection::Descending)
         .build();
 
     let result: PaginatedResponse<TestProduct> =
@@ -657,7 +685,7 @@ async fn test_sql_injection_attempt_in_search() {
     seed_users(&pool).await.unwrap();
 
     let params = QueryParamsBuilder::<TestUser>::new()
-        .with_search("'; DROP TABLE users; --", vec!["first_name"])
+        .with_search("'; DROP TABLE users; --", vec![TestUserField::FirstName])
         .build();
 
     let result = paginated_query_as::<TestUser, Sqlite>("SELECT * FROM users")

@@ -1,8 +1,11 @@
 #![allow(clippy::unwrap_used, clippy::indexing_slicing)]
 
-use sqlx_paginated::{QueryBuilder, QueryFilterCondition, QueryFilterOperator, QueryParamsBuilder, Fields};
+use sqlx_paginated::{
+    Fields, QueryBuilder, QueryFilterCondition, QueryFilterOperator, QueryParamsBuilder,
+};
 
 #[derive(Fields, Debug)]
+#[allow(dead_code)]
 struct TestProduct {
     id: i64,
     name: String,
@@ -21,7 +24,7 @@ mod postgres_tests {
     #[test]
     fn test_equality_operator() {
         let params = QueryParamsBuilder::<TestProduct>::new()
-            .with_filter("status", Some("active"))
+            .with_filter(TestProductField::Status, Some("active"))
             .build();
 
         let (conditions, _args) = QueryBuilder::<TestProduct, Postgres>::new()
@@ -35,7 +38,11 @@ mod postgres_tests {
     #[test]
     fn test_not_equal_operator() {
         let params = QueryParamsBuilder::<TestProduct>::new()
-            .with_filter_operator("status", QueryFilterOperator::NotEqual, "deleted")
+            .with_filter_operator(
+                TestProductField::Status,
+                QueryFilterOperator::NotEqual,
+                "deleted",
+            )
             .build();
 
         let (conditions, _args) = QueryBuilder::<TestProduct, Postgres>::new()
@@ -49,7 +56,11 @@ mod postgres_tests {
     #[test]
     fn test_greater_than_operator() {
         let params = QueryParamsBuilder::<TestProduct>::new()
-            .with_filter_operator("price", QueryFilterOperator::GreaterThan, "10.00")
+            .with_filter_operator(
+                TestProductField::Price,
+                QueryFilterOperator::GreaterThan,
+                "10.00",
+            )
             .build();
 
         let (conditions, _args) = QueryBuilder::<TestProduct, Postgres>::new()
@@ -63,7 +74,11 @@ mod postgres_tests {
     #[test]
     fn test_greater_or_equal_operator() {
         let params = QueryParamsBuilder::<TestProduct>::new()
-            .with_filter_operator("stock", QueryFilterOperator::GreaterOrEqual, "5")
+            .with_filter_operator(
+                TestProductField::Stock,
+                QueryFilterOperator::GreaterOrEqual,
+                "5",
+            )
             .build();
 
         let (conditions, _args) = QueryBuilder::<TestProduct, Postgres>::new()
@@ -77,7 +92,11 @@ mod postgres_tests {
     #[test]
     fn test_less_than_operator() {
         let params = QueryParamsBuilder::<TestProduct>::new()
-            .with_filter_operator("price", QueryFilterOperator::LessThan, "100.00")
+            .with_filter_operator(
+                TestProductField::Price,
+                QueryFilterOperator::LessThan,
+                "100.00",
+            )
             .build();
 
         let (conditions, _args) = QueryBuilder::<TestProduct, Postgres>::new()
@@ -91,7 +110,11 @@ mod postgres_tests {
     #[test]
     fn test_less_or_equal_operator() {
         let params = QueryParamsBuilder::<TestProduct>::new()
-            .with_filter_operator("stock", QueryFilterOperator::LessOrEqual, "100")
+            .with_filter_operator(
+                TestProductField::Stock,
+                QueryFilterOperator::LessOrEqual,
+                "100",
+            )
             .build();
 
         let (conditions, _args) = QueryBuilder::<TestProduct, Postgres>::new()
@@ -105,7 +128,10 @@ mod postgres_tests {
     #[test]
     fn test_in_operator() {
         let params = QueryParamsBuilder::<TestProduct>::new()
-            .with_filter_in("status", vec!["active", "pending", "approved"])
+            .with_filter_in(
+                TestProductField::Status,
+                vec!["active", "pending", "approved"],
+            )
             .build();
 
         let (conditions, _args) = QueryBuilder::<TestProduct, Postgres>::new()
@@ -122,7 +148,7 @@ mod postgres_tests {
     #[test]
     fn test_not_in_operator() {
         let params = QueryParamsBuilder::<TestProduct>::new()
-            .with_filter_not_in("status", vec!["deleted", "banned"])
+            .with_filter_not_in(TestProductField::Status, vec!["deleted", "banned"])
             .build();
 
         let (conditions, _args) = QueryBuilder::<TestProduct, Postgres>::new()
@@ -166,7 +192,11 @@ mod postgres_tests {
     #[test]
     fn test_like_operator() {
         let params = QueryParamsBuilder::<TestProduct>::new()
-            .with_filter_operator("name", QueryFilterOperator::Like, "%laptop%")
+            .with_filter_operator(
+                TestProductField::Name,
+                QueryFilterOperator::Like,
+                "%laptop%",
+            )
             .build();
 
         let (conditions, _args) = QueryBuilder::<TestProduct, Postgres>::new()
@@ -180,7 +210,11 @@ mod postgres_tests {
     #[test]
     fn test_not_like_operator() {
         let params = QueryParamsBuilder::<TestProduct>::new()
-            .with_filter_operator("name", QueryFilterOperator::NotLike, "%test%")
+            .with_filter_operator(
+                TestProductField::Name,
+                QueryFilterOperator::NotLike,
+                "%test%",
+            )
             .build();
 
         let (conditions, _args) = QueryBuilder::<TestProduct, Postgres>::new()
@@ -194,10 +228,22 @@ mod postgres_tests {
     #[test]
     fn test_multiple_operators() {
         let params = QueryParamsBuilder::<TestProduct>::new()
-            .with_filter_operator("price", QueryFilterOperator::GreaterThan, "10.00")
-            .with_filter_operator("price", QueryFilterOperator::LessThan, "100.00")
-            .with_filter_operator("stock", QueryFilterOperator::GreaterOrEqual, "1")
-            .with_filter("status", Some("active"))
+            .with_filter_operator(
+                TestProductField::Price,
+                QueryFilterOperator::GreaterThan,
+                "10.00",
+            )
+            .with_filter_operator(
+                TestProductField::Price,
+                QueryFilterOperator::LessThan,
+                "100.00",
+            )
+            .with_filter_operator(
+                TestProductField::Stock,
+                QueryFilterOperator::GreaterOrEqual,
+                "1",
+            )
+            .with_filter(TestProductField::Status, Some("active"))
             .build();
 
         let (conditions, _args) = QueryBuilder::<TestProduct, Postgres>::new()
@@ -261,7 +307,7 @@ mod sqlite_tests {
     #[test]
     fn test_equality_operator_sqlite() {
         let params = QueryParamsBuilder::<TestProduct>::new()
-            .with_filter("status", Some("active"))
+            .with_filter(TestProductField::Status, Some("active"))
             .build();
 
         let (conditions, _args) = QueryBuilder::<TestProduct, Sqlite>::new()
@@ -275,8 +321,16 @@ mod sqlite_tests {
     #[test]
     fn test_comparison_operators_sqlite() {
         let params = QueryParamsBuilder::<TestProduct>::new()
-            .with_filter_operator("price", QueryFilterOperator::GreaterThan, "10.00")
-            .with_filter_operator("stock", QueryFilterOperator::LessOrEqual, "100")
+            .with_filter_operator(
+                TestProductField::Price,
+                QueryFilterOperator::GreaterThan,
+                "10.00",
+            )
+            .with_filter_operator(
+                TestProductField::Stock,
+                QueryFilterOperator::LessOrEqual,
+                "100",
+            )
             .build();
 
         let (conditions, _args) = QueryBuilder::<TestProduct, Sqlite>::new()
@@ -291,7 +345,10 @@ mod sqlite_tests {
     #[test]
     fn test_in_operator_sqlite() {
         let params = QueryParamsBuilder::<TestProduct>::new()
-            .with_filter_in("category", vec!["electronics", "books", "toys"])
+            .with_filter_in(
+                TestProductField::Category,
+                vec!["electronics", "books", "toys"],
+            )
             .build();
 
         let (conditions, _args) = QueryBuilder::<TestProduct, Sqlite>::new()

@@ -1,7 +1,6 @@
 use crate::paginated_query_as::internal::{
-    QueryDateRangeParams, QueryPaginationParams, QuerySearchParams,
-    QuerySortParams, DEFAULT_DATE_RANGE_COLUMN_NAME, DEFAULT_MAX_PAGE_SIZE, DEFAULT_MIN_PAGE_SIZE,
-    DEFAULT_PAGE,
+    QueryDateRangeParams, QueryPaginationParams, QuerySearchParams, QuerySortParams,
+    DEFAULT_DATE_RANGE_COLUMN_NAME, DEFAULT_MAX_PAGE_SIZE, DEFAULT_MIN_PAGE_SIZE, DEFAULT_PAGE,
 };
 use crate::paginated_query_as::models::QuerySortDirection;
 use crate::paginated_query_as::models::{QueryFilterCondition, QueryFilterOperator};
@@ -434,7 +433,6 @@ impl<'q, T: FieldSource> QueryParamsBuilder<'q, T> {
         mut self,
         filters: HashMap<impl Into<String>, Option<impl Into<String>>>,
     ) -> Self {
-
         self.query
             .filters
             .extend(filters.into_iter().filter_map(|(key, value)| {
@@ -487,7 +485,6 @@ impl<'q, T: FieldSource> QueryParamsBuilder<'q, T> {
         mut self,
         filters: HashMap<impl Into<String>, QueryFilterCondition>,
     ) -> Self {
-
         self.query
             .filters
             .extend(filters.into_iter().filter_map(|(key, condition)| {
@@ -526,9 +523,9 @@ impl<'q, T: FieldSource> QueryParamsBuilder<'q, T> {
     ///
     /// let params = QueryParamsBuilder::<UserExample>::new()
     ///     .with_pagination(1, 20)
-    ///     .with_sort("created_at", QuerySortDirection::Descending)
-    ///     .with_search("john", vec!["name", "email"])
-    ///     .with_filter("status", Some("active"))
+    ///     .with_sort(UserExampleField::CreatedAt, QuerySortDirection::Descending)
+    ///     .with_search("john", vec![UserExampleField::Name, UserExampleField::Email])
+    ///     .with_filter(UserExampleField::Status, Some("active"))
     ///     .build();
     /// ```
     pub fn build(self) -> QueryParams<'q, T> {
@@ -545,11 +542,12 @@ mod tests {
     };
     use crate::paginated_query_as::models::QuerySortDirection;
     use chrono::{DateTime, Utc};
-    use std::collections::HashMap;
     use sqlx_paginated_derive::Fields;
+    use std::collections::HashMap;
 
     #[derive(Debug, Fields)]
     #[sqlx_paginated(crate = "crate")]
+    #[allow(dead_code)]
     struct TestModel {
         name: String,
         title: String,
@@ -722,8 +720,8 @@ mod tests {
     #[test]
     fn test_filters() {
         let mut filters = HashMap::new();
-        filters.insert("status".to_string(), Some("active".to_string()));
-        filters.insert("category".to_string(), Some("test".to_string()));
+        filters.insert(TestModelField::Status.as_str(), Some("active".to_string()));
+        filters.insert(TestModelField::Category.as_str(), Some("test".to_string()));
 
         let params = QueryParamsBuilder::<TestModel>::new()
             .with_filters(filters)
@@ -745,7 +743,7 @@ mod tests {
         let params = QueryParamsBuilder::<TestModel>::new()
             .with_search(
                 "test".to_string(),
-                vec!["title".to_string(), "description".to_string()],
+                vec![TestModelField::Title, TestModelField::Description],
             )
             .build();
 
@@ -763,7 +761,7 @@ mod tests {
             .with_sort("updated_at".to_string(), QuerySortDirection::Ascending)
             .with_search(
                 "test".to_string(),
-                vec!["title".to_string(), "description".to_string()],
+                vec![TestModelField::Title, TestModelField::Description],
             )
             .with_date_range(Some(Utc::now()), None, None::<String>)
             .build();
@@ -787,8 +785,8 @@ mod tests {
     #[test]
     fn test_filter_chain() {
         let params = QueryParamsBuilder::<TestModel>::new()
-            .with_filter("status", Some("active"))
-            .with_filter("category", Some("test"))
+            .with_filter(TestModelField::Status, Some("active"))
+            .with_filter(TestModelField::Category, Some("test"))
             .build();
 
         let status_filter = params.filters.get("status").unwrap();
@@ -804,8 +802,8 @@ mod tests {
     fn test_mixed_pagination() {
         let params = QueryParamsBuilder::<TestModel>::new()
             .with_pagination(2, 10)
-            .with_search("test".to_string(), vec!["title".to_string()])
-            .with_filter("status", Some("active"))
+            .with_search("test".to_string(), vec![TestModelField::Title])
+            .with_filter(TestModelField::Status, Some("active"))
             .build();
 
         assert_eq!(params.pagination.page, 2);
@@ -820,8 +818,12 @@ mod tests {
     #[test]
     fn test_filter_operators() {
         let params = QueryParamsBuilder::<TestModel>::new()
-            .with_filter_operator("title", QueryFilterOperator::Like, "%test%")
-            .with_filter_operator("status", QueryFilterOperator::NotEqual, "deleted")
+            .with_filter_operator(TestModelField::Title, QueryFilterOperator::Like, "%test%")
+            .with_filter_operator(
+                TestModelField::Status,
+                QueryFilterOperator::NotEqual,
+                "deleted",
+            )
             .build();
 
         let title_filter = params.filters.get("title").unwrap();
@@ -836,7 +838,7 @@ mod tests {
     #[test]
     fn test_filter_null() {
         let params = QueryParamsBuilder::<TestModel>::new()
-            .with_filter_null("description", true)
+            .with_filter_null(TestModelField::Description, true)
             .build();
 
         let filter = params.filters.get("description").unwrap();
@@ -847,7 +849,10 @@ mod tests {
     #[test]
     fn test_filter_in() {
         let params = QueryParamsBuilder::<TestModel>::new()
-            .with_filter_in("status", vec!["active", "pending", "approved"])
+            .with_filter_in(
+                TestModelField::Status,
+                vec!["active", "pending", "approved"],
+            )
             .build();
 
         let filter = params.filters.get("status").unwrap();

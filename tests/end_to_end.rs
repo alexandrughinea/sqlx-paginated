@@ -8,15 +8,12 @@
 //! cargo test --test end_to_end --features sqlite
 //! ```
 //!
-//! ### postgres (requires DB)
+//! ### postgres
+//! Utilizes a test container for each test, requires a Docker-compatible runtime.
 //! ```bash
-//! docker run --name sqlx-test-postgres \
-//!   -e POSTGRES_PASSWORD=postgres \
-//!   -e POSTGRES_DB=sqlx_paginated_test \
-//!   -p 5432:5432 -d postgres:15
 //!
 //! # Run tests
-//! cargo test --test end_to_end --features postgres -- --ignored
+//! cargo test --test end_to_end --features postgres
 //! ```
 
 #[cfg(feature = "postgres")]

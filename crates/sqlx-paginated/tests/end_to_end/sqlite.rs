@@ -269,6 +269,27 @@ async fn test_basic_pagination() {
 }
 
 #[tokio::test]
+async fn test_pagination_with_acquired_connection() {
+    let pool = setup_test_db().await.unwrap();
+    seed_users(&pool).await.unwrap();
+    let connection = pool.acquire().await.unwrap();
+
+    let params = QueryParamsBuilder::<TestUser>::new()
+        .with_pagination(1, 10)
+        .build();
+
+    let result: PaginatedResponse<TestUser> =
+        paginated_query_as::<TestUser, Sqlite>("SELECT * FROM users")
+            .with_params(params)
+            .fetch_paginated(connection)
+            .await
+            .unwrap();
+
+    assert_eq!(result.records.len(), 8);
+    assert_eq!(result.total, Some(8));
+}
+
+#[tokio::test]
 async fn test_pagination_second_page() {
     let pool = setup_test_db().await.unwrap();
 

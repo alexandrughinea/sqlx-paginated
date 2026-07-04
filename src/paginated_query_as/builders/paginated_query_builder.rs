@@ -254,7 +254,7 @@ where
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn fetch_paginated<'e, E>(
+    pub async fn fetch_paginated<E>(
         self,
         mut executor: E,
     ) -> Result<PaginatedResponse<T>, sqlx::Error>
@@ -412,7 +412,7 @@ where
     /// # Ok(())
     /// # }
     /// ```
-    pub async fn fetch_paginated<'e, E>(
+    pub async fn fetch_paginated<E>(
         self,
         mut executor: E,
     ) -> Result<PaginatedResponse<T>, sqlx::Error>

@@ -1,12 +1,16 @@
 #![allow(clippy::unwrap_used, clippy::indexing_slicing)]
+use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::postgres::{PgPool, PgPoolOptions, Postgres};
+use sqlx::postgres::{PgConnectOptions, PgPool, PgPoolOptions, Postgres};
 use sqlx::FromRow;
 use sqlx_paginated::{
     paginated_query_as, PaginatedResponse, QueryFilterOperator, QueryParamsBuilder,
     QuerySortDirection,
 };
+use testcontainers::runners::AsyncRunner;
+use testcontainers::ContainerAsync;
+use testcontainers_modules::postgres::Postgres as PostgresContainer;
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow, Default)]
 struct TestUser {
@@ -30,18 +34,27 @@ struct TestProduct {
     created_at: DateTime<Utc>,
 }
 
-fn get_database_url() -> String {
-    std::env::var("TEST_DATABASE_URL").unwrap_or_else(|_| {
-        "postgres://postgres:postgres@localhost:5432/sqlx_paginated_test".to_string()
-    })
-}
+async fn setup_test_db() -> Result<(PgPool, ContainerAsync<PostgresContainer>)> {
+    let container = PostgresContainer::default()
+        .with_db_name("sqlx_paginated_test")
+        .with_user("postgres")
+        .with_password("postgres")
+        .start()
+        .await?;
 
-async fn setup_test_db() -> Result<PgPool, sqlx::Error> {
-    let database_url = get_database_url();
+    let host = container.get_host().await?;
+    let port = container.get_host_port_ipv4(5432).await?;
+
+    let connect_opts = PgConnectOptions::new()
+        .host(&host.to_string())
+        .port(port)
+        .database("sqlx_paginated_test")
+        .username("postgres")
+        .password("postgres");
 
     let pool = PgPoolOptions::new()
         .max_connections(5)
-        .connect(&database_url)
+        .connect_with(connect_opts)
         .await?;
 
     let _ = sqlx::query("DROP TABLE IF EXISTS test_users CASCADE")
@@ -99,7 +112,7 @@ async fn setup_test_db() -> Result<PgPool, sqlx::Error> {
         .execute(&pool)
         .await?;
 
-    Ok(pool)
+    Ok((pool, container))
 }
 
 async fn seed_users(pool: &PgPool) -> Result<(), sqlx::Error> {
@@ -199,22 +212,9 @@ async fn seed_products(pool: &PgPool) -> Result<(), sqlx::Error> {
     Ok(())
 }
 
-async fn cleanup_db(pool: &PgPool) {
-    let _ = sqlx::query("DROP TABLE IF EXISTS test_users CASCADE")
-        .execute(pool)
-        .await;
-    let _ = sqlx::query("DROP TABLE IF EXISTS test_products CASCADE")
-        .execute(pool)
-        .await;
-    let _ = sqlx::query("DROP TABLE IF EXISTS test_nulls CASCADE")
-        .execute(pool)
-        .await;
-}
-
 #[tokio::test]
-#[ignore = "Requires PostgreSQL database"]
 async fn test_basic_pagination() {
-    let pool = setup_test_db().await.unwrap();
+    let (pool, _container) = setup_test_db().await.unwrap();
     seed_users(&pool).await.unwrap();
 
     let params = QueryParamsBuilder::<TestUser>::new()
@@ -233,14 +233,11 @@ async fn test_basic_pagination() {
     assert_eq!(result.pagination.as_ref().unwrap().page_size, 10);
     assert_eq!(result.total, Some(8));
     assert_eq!(result.total_pages, Some(1));
-
-    cleanup_db(&pool).await;
 }
 
 #[tokio::test]
-#[ignore = "Requires PostgreSQL database"]
 async fn test_pagination_second_page() {
-    let pool = setup_test_db().await.unwrap();
+    let (pool, _container) = setup_test_db().await.unwrap();
 
     for i in 1..=25 {
         sqlx::query(
@@ -271,14 +268,11 @@ async fn test_pagination_second_page() {
     assert_eq!(result.pagination.as_ref().unwrap().page, 2);
     assert_eq!(result.total, Some(25));
     assert_eq!(result.total_pages, Some(3));
-
-    cleanup_db(&pool).await;
 }
 
 #[tokio::test]
-#[ignore = "Requires PostgreSQL database"]
 async fn test_sort_ascending() {
-    let pool = setup_test_db().await.unwrap();
+    let (pool, _container) = setup_test_db().await.unwrap();
     seed_users(&pool).await.unwrap();
 
     let params = QueryParamsBuilder::<TestUser>::new()
@@ -294,14 +288,11 @@ async fn test_sort_ascending() {
 
     assert_eq!(result.records[0].first_name, "Alice");
     assert_eq!(result.records[1].first_name, "Bob");
-
-    cleanup_db(&pool).await;
 }
 
 #[tokio::test]
-#[ignore = "Requires PostgreSQL database"]
 async fn test_sort_descending() {
-    let pool = setup_test_db().await.unwrap();
+    let (pool, _container) = setup_test_db().await.unwrap();
     seed_users(&pool).await.unwrap();
 
     let params = QueryParamsBuilder::<TestUser>::new()
@@ -317,14 +308,11 @@ async fn test_sort_descending() {
 
     assert_eq!(result.records[0].first_name, "Johnny");
     assert_eq!(result.records[1].first_name, "John");
-
-    cleanup_db(&pool).await;
 }
 
 #[tokio::test]
-#[ignore = "Requires PostgreSQL database"]
 async fn test_search_single_column() {
-    let pool = setup_test_db().await.unwrap();
+    let (pool, _container) = setup_test_db().await.unwrap();
     seed_users(&pool).await.unwrap();
 
     let params = QueryParamsBuilder::<TestUser>::new()
@@ -340,14 +328,11 @@ async fn test_search_single_column() {
 
     assert_eq!(result.records.len(), 2);
     assert!(result.records[0].first_name.to_lowercase().contains("john"));
-
-    cleanup_db(&pool).await;
 }
 
 #[tokio::test]
-#[ignore = "Requires PostgreSQL database"]
 async fn test_search_multiple_columns() {
-    let pool = setup_test_db().await.unwrap();
+    let (pool, _container) = setup_test_db().await.unwrap();
     seed_users(&pool).await.unwrap();
 
     let params = QueryParamsBuilder::<TestUser>::new()
@@ -363,14 +348,11 @@ async fn test_search_multiple_columns() {
 
     assert_eq!(result.records.len(), 1);
     assert_eq!(result.records[0].last_name, "Smith");
-
-    cleanup_db(&pool).await;
 }
 
 #[tokio::test]
-#[ignore = "Requires PostgreSQL database"]
 async fn test_search_case_insensitive() {
-    let pool = setup_test_db().await.unwrap();
+    let (pool, _container) = setup_test_db().await.unwrap();
     seed_users(&pool).await.unwrap();
 
     let params = QueryParamsBuilder::<TestUser>::new()
@@ -385,14 +367,11 @@ async fn test_search_case_insensitive() {
             .unwrap();
 
     assert_eq!(result.records.len(), 2);
-
-    cleanup_db(&pool).await;
 }
 
 #[tokio::test]
-#[ignore = "Requires PostgreSQL database"]
 async fn test_filter_equality() {
-    let pool = setup_test_db().await.unwrap();
+    let (pool, _container) = setup_test_db().await.unwrap();
     seed_users(&pool).await.unwrap();
 
     let params = QueryParamsBuilder::<TestUser>::new()
@@ -408,14 +387,11 @@ async fn test_filter_equality() {
 
     assert_eq!(result.records.len(), 5);
     assert!(result.records.iter().all(|u| u.confirmed));
-
-    cleanup_db(&pool).await;
 }
 
 #[tokio::test]
-#[ignore = "Requires PostgreSQL database"]
 async fn test_filter_greater_than() {
-    let pool = setup_test_db().await.unwrap();
+    let (pool, _container) = setup_test_db().await.unwrap();
     seed_products(&pool).await.unwrap();
 
     let params = QueryParamsBuilder::<TestProduct>::new()
@@ -431,14 +407,11 @@ async fn test_filter_greater_than() {
 
     assert!(!result.records.is_empty());
     assert!(result.records.iter().all(|p| p.price > 100.0));
-
-    cleanup_db(&pool).await;
 }
 
 #[tokio::test]
-#[ignore = "Requires PostgreSQL database"]
 async fn test_filter_in_operator() {
-    let pool = setup_test_db().await.unwrap();
+    let (pool, _container) = setup_test_db().await.unwrap();
     seed_products(&pool).await.unwrap();
 
     let params = QueryParamsBuilder::<TestProduct>::new()
@@ -457,14 +430,11 @@ async fn test_filter_in_operator() {
         .records
         .iter()
         .all(|p| p.category == "computers" || p.category == "electronics"));
-
-    cleanup_db(&pool).await;
 }
 
 #[tokio::test]
-#[ignore = "Requires PostgreSQL database"]
 async fn test_filter_between_range() {
-    let pool = setup_test_db().await.unwrap();
+    let (pool, _container) = setup_test_db().await.unwrap();
     seed_products(&pool).await.unwrap();
 
     let params = QueryParamsBuilder::<TestProduct>::new()
@@ -480,14 +450,11 @@ async fn test_filter_between_range() {
 
     assert!(!result.records.is_empty());
     assert!(result.records.iter().all(|p| p.price >= 50.0));
-
-    cleanup_db(&pool).await;
 }
 
 #[tokio::test]
-#[ignore = "Requires PostgreSQL database"]
 async fn test_filter_null_check() {
-    let pool = setup_test_db().await.unwrap();
+    let (pool, _container) = setup_test_db().await.unwrap();
 
     sqlx::query(
         "CREATE TABLE test_nulls (
@@ -535,14 +502,11 @@ async fn test_filter_null_check() {
 
     assert_eq!(result.records.len(), 1);
     assert!(result.records[0].deleted_at.is_none());
-
-    cleanup_db(&pool).await;
 }
 
 #[tokio::test]
-#[ignore = "Requires PostgreSQL database"]
 async fn test_date_range_filter() {
-    let pool = setup_test_db().await.unwrap();
+    let (pool, _container) = setup_test_db().await.unwrap();
     seed_users(&pool).await.unwrap();
 
     let now = Utc::now();
@@ -561,14 +525,11 @@ async fn test_date_range_filter() {
             .unwrap();
 
     assert_eq!(result.records.len(), 8);
-
-    cleanup_db(&pool).await;
 }
 
 #[tokio::test]
-#[ignore = "Requires PostgreSQL database"]
 async fn test_combined_search_filter_sort_pagination() {
-    let pool = setup_test_db().await.unwrap();
+    let (pool, _container) = setup_test_db().await.unwrap();
     seed_products(&pool).await.unwrap();
 
     let params = QueryParamsBuilder::<TestProduct>::new()
@@ -593,14 +554,11 @@ async fn test_combined_search_filter_sort_pagination() {
     for i in 1..result.records.len() {
         assert!(result.records[i].price >= result.records[i - 1].price);
     }
-
-    cleanup_db(&pool).await;
 }
 
 #[tokio::test]
-#[ignore = "Requires PostgreSQL database"]
 async fn test_complex_filtering_scenario() {
-    let pool = setup_test_db().await.unwrap();
+    let (pool, _container) = setup_test_db().await.unwrap();
     seed_products(&pool).await.unwrap();
 
     let params = QueryParamsBuilder::<TestProduct>::new()
@@ -622,14 +580,11 @@ async fn test_complex_filtering_scenario() {
         assert!(product.stock > 0);
         assert!(product.price >= 100.0);
     }
-
-    cleanup_db(&pool).await;
 }
 
 #[tokio::test]
-#[ignore = "Requires PostgreSQL database"]
 async fn test_sql_injection_attempt_in_search() {
-    let pool = setup_test_db().await.unwrap();
+    let (pool, _container) = setup_test_db().await.unwrap();
     seed_users(&pool).await.unwrap();
 
     let params = QueryParamsBuilder::<TestUser>::new()
@@ -648,14 +603,11 @@ async fn test_sql_injection_attempt_in_search() {
         .await
         .unwrap();
     assert_eq!(count.0, 8);
-
-    cleanup_db(&pool).await;
 }
 
 #[tokio::test]
-#[ignore = "Requires PostgreSQL database"]
 async fn test_sql_injection_attempt_in_filter() {
-    let pool = setup_test_db().await.unwrap();
+    let (pool, _container) = setup_test_db().await.unwrap();
     seed_users(&pool).await.unwrap();
 
     let params = QueryParamsBuilder::<TestUser>::new()
@@ -672,14 +624,11 @@ async fn test_sql_injection_attempt_in_filter() {
     if let Ok(res) = result {
         assert!(res.records.len() < 8);
     }
-
-    cleanup_db(&pool).await;
 }
 
 #[tokio::test]
-#[ignore = "Requires PostgreSQL database"]
 async fn test_empty_table() {
-    let pool = setup_test_db().await.unwrap();
+    let (pool, _container) = setup_test_db().await.unwrap();
 
     let params = QueryParamsBuilder::<TestUser>::new().build();
 
@@ -693,14 +642,11 @@ async fn test_empty_table() {
     assert_eq!(result.records.len(), 0);
     assert_eq!(result.total, Some(0));
     assert_eq!(result.total_pages, Some(0));
-
-    cleanup_db(&pool).await;
 }
 
 #[tokio::test]
-#[ignore = "Requires PostgreSQL database"]
 async fn test_disable_totals_count() {
-    let pool = setup_test_db().await.unwrap();
+    let (pool, _container) = setup_test_db().await.unwrap();
     seed_users(&pool).await.unwrap();
 
     let params = QueryParamsBuilder::<TestUser>::new()
@@ -718,14 +664,11 @@ async fn test_disable_totals_count() {
     assert!(!result.records.is_empty());
     assert_eq!(result.total, None);
     assert_eq!(result.total_pages, None);
-
-    cleanup_db(&pool).await;
 }
 
 #[tokio::test]
-#[ignore = "Requires PostgreSQL database"]
 async fn test_large_result_set() {
-    let pool = setup_test_db().await.unwrap();
+    let (pool, _container) = setup_test_db().await.unwrap();
 
     for i in 1..=100 {
         sqlx::query(
@@ -755,6 +698,4 @@ async fn test_large_result_set() {
     assert_eq!(result.records.len(), 50);
     assert_eq!(result.total, Some(100));
     assert_eq!(result.total_pages, Some(2));
-
-    cleanup_db(&pool).await;
 }

@@ -169,19 +169,19 @@ Add to `Cargo.toml`:
 **For PostgreSQL:**
 ```toml
 [dependencies]
-sqlx_paginated = { version = "0.4.0", features = ["postgres"] }
+sqlx_paginated = { version = "0.5.0", features = ["postgres"] }
 ```
 
 **For SQLite:**
 ```toml
 [dependencies]
-sqlx_paginated = { version = "0.4.0", features = ["sqlite"] }
+sqlx_paginated = { version = "0.5.0", features = ["sqlite"] }
 ```
 
 **For both:**
 ```toml
 [dependencies]
-sqlx_paginated = { version = "0.4.0", features = ["postgres", "sqlite"] }
+sqlx_paginated = { version = "0.5.0", features = ["postgres", "sqlite"] }
 ```
 
 ## SQLx compatibility

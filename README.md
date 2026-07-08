@@ -209,10 +209,10 @@ Note: SQLx 0.9 split the old `runtime-tokio-rustls` feature into `runtime-tokio`
 
 **PostgreSQL:**
 ```rust
-use sqlx::{PgPool, Postgres};
-use sqlx_paginated::{QueryParamsBuilder, QuerySortDirection, paginated_query_as};
+use sqlx::{PgPool, Postgres, FromRow};
+use sqlx_paginated::{QueryParamsBuilder, QuerySortDirection, paginated_query_as, Fields};
 
-#[derive(sqlx::FromRow, serde::Serialize, Default)]
+#[derive(FromRow, Fields)]
 struct User {
     id: i64,
     first_name: String,
@@ -225,8 +225,8 @@ struct User {
 async fn get_users(pool: &PgPool) -> Result<PaginatedResponse<User>, sqlx::Error> {
     let params = QueryParamsBuilder::<User>::new()
         .with_pagination(1, 10)
-        .with_sort("created_at", QuerySortDirection::Descending)
-        .with_search("john", vec!["first_name", "last_name", "email"])
+        .with_sort(UserFields::CreatedAt, QuerySortDirection::Descending)
+        .with_search("john", vec![UserFields::FirstName, UserFields::LastName, UserFields::Email])
         .build();
     
     // Function syntax (recommended)
@@ -248,8 +248,8 @@ use sqlx_paginated::{QueryParamsBuilder, QuerySortDirection, paginated_query_as}
 async fn get_users(pool: &SqlitePool) -> Result<PaginatedResponse<User>, sqlx::Error> {
     let params = QueryParamsBuilder::<User>::new()
         .with_pagination(1, 10)
-        .with_sort("created_at", QuerySortDirection::Descending)
-        .with_search("john", vec!["first_name", "last_name", "email"])
+        .with_sort(UserFields::CreatedAt, QuerySortDirection::Descending)
+        .with_search("john", vec![UserFields::FirstName, UserFields::LastName, UserFields::Email])
         .build();
     
     // Function syntax (recommended)
@@ -432,8 +432,8 @@ QueryParamsBuilder::<Product>::new()
 
 // Convenience methods
 QueryParamsBuilder::<User>::new()
-    .with_filter_in("role", vec!["admin", "moderator"])
-    .with_filter_null("deleted_at", true)
+    .with_filter_in(UserFields::Role, vec!["admin", "moderator"])
+    .with_filter_null(UserFields::DeletedAt, true)
     .build()
 
 // Using QueryFilterCondition
@@ -441,8 +441,8 @@ use sqlx_paginated::QueryFilterCondition;
 use std::collections::HashMap;
 
 let mut filters = HashMap::new();
-filters.insert("price".to_string(), QueryFilterCondition::greater_than("50.00"));
-filters.insert("status".to_string(), QueryFilterCondition::not_equal("deleted"));
+filters.insert(ProductFields::Price, QueryFilterCondition::greater_than("50.00"));
+filters.insert(ProductFields::Status, QueryFilterCondition::not_equal("deleted"));
 
 QueryParamsBuilder::<Product>::new()
     .with_filter_conditions(filters)
@@ -508,14 +508,14 @@ GET /products?search=laptop&search_columns=name,description
 use sqlx_paginated::{QueryParamsBuilder, QuerySortDirection, QueryFilterOperator};
 
 let params = QueryParamsBuilder::<Product>::new()
-    .with_search("laptop", vec!["name", "description"])
-    .with_filter_operator("price", QueryFilterOperator::GreaterOrEqual, "500")
-    .with_filter_operator("price", QueryFilterOperator::LessOrEqual, "2000")
-    .with_filter_operator("stock", QueryFilterOperator::GreaterThan, "0")
-    .with_filter_in("category", vec!["computers", "electronics"])
-    .with_filter("status", Some("active"))
-    .with_filter_null("deleted_at", true)
-    .with_sort("price", QuerySortDirection::Ascending)
+    .with_search("laptop", vec![ProductFields::Name, ProductFields::Description])
+    .with_filter_operator(ProductFields::Price, QueryFilterOperator::GreaterOrEqual, "500")
+    .with_filter_operator(ProductFields::Price, QueryFilterOperator::LessOrEqual, "2000")
+    .with_filter_operator(ProductFields::Stock, QueryFilterOperator::GreaterThan, "0")
+    .with_filter_in(ProductFields::Category, vec!["computers", "electronics"])
+    .with_filter(ProductFields::Status, Some("active"))
+    .with_filter_null(ProductFields::DeletedAt, true)
+    .with_sort(ProductFields::Price, QuerySortDirection::Ascending)
     .with_pagination(1, 24)
     .build();
 ```
@@ -527,7 +527,7 @@ against its own fields.
 - We should also receive a paginated response back with the matching records.
 
 ```rust
-#[derive(Serialize, Deserialize, FromRow, Default)]
+#[derive(Serialize, Deserialize, FromRow, Fields)]
 pub struct User {
     pub id: Option<Uuid>,
     pub first_name: String,

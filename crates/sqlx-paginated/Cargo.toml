@@ -1,12 +1,12 @@
 [package]
 name = "sqlx-paginated"
-version = "0.4.0"
-edition = "2021"
-authors = ["@alexandrughinea"]
-description = "A flexible, type-safe SQLx query builder for dynamic web APIs, offering seamless pagination, searching, filtering, and sorting."
-license = "MIT"
-repository = "https://github.com/alexandrughinea/sqlx-paginated"
-documentation = "https://docs.rs/sqlx-paginated"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description.workspace = true
+license.workspace = true
+repository.workspace = true
+documentation.workspace = true
 
 [features]
 tracing = ["tracing/default"]

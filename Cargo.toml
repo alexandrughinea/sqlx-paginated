@@ -4,3 +4,12 @@ members = [
     "crates/sqlx-paginated",
     "crates/sqlx-paginated-derive",
 ]
+
+[workspace.package]
+edition = "2021"
+version = "0.6.0"
+authors = ["@alexandrughinea"]
+description = "A flexible, type-safe SQLx query builder for dynamic web APIs, offering seamless pagination, searching, filtering, and sorting."
+license = "MIT"
+repository = "https://github.com/alexandrughinea/sqlx-paginated"
+documentation = "https://docs.rs/sqlx-paginated"

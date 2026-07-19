@@ -169,19 +169,19 @@ Add to `Cargo.toml`:
 **For PostgreSQL:**
 ```toml
 [dependencies]
-sqlx_paginated = { version = "0.4.0", features = ["postgres"] }
+sqlx_paginated = { version = "0.5.0", features = ["postgres"] }
 ```
 
 **For SQLite:**
 ```toml
 [dependencies]
-sqlx_paginated = { version = "0.4.0", features = ["sqlite"] }
+sqlx_paginated = { version = "0.5.0", features = ["sqlite"] }
 ```
 
 **For both:**
 ```toml
 [dependencies]
-sqlx_paginated = { version = "0.4.0", features = ["postgres", "sqlite"] }
+sqlx_paginated = { version = "0.5.0", features = ["postgres", "sqlite"] }
 ```
 
 ## SQLx compatibility
@@ -191,14 +191,14 @@ sqlx_paginated = { version = "0.4.0", features = ["postgres", "sqlite"] }
 | `sqlx-paginated` | SQLx version |
 |------------------|--------------|
 | `0.3.x`          | `0.8.x`      |
-| `0.4.x`          | `0.9.x`      |
+| `>=0.4`          | `0.9.x`      |
 
 If you're on SQLx 0.8, stay on `sqlx-paginated = "0.3"`. When upgrading to SQLx 0.9, bump both dependencies together:
 
 ```toml
 [dependencies]
 sqlx = { version = "0.9", features = ["runtime-tokio", "tls-rustls", "postgres"] }
-sqlx_paginated = { version = "0.4", features = ["postgres"] }
+sqlx_paginated = { version = "0.5", features = ["postgres"] }
 ```
 
 Note: SQLx 0.9 split the old `runtime-tokio-rustls` feature into `runtime-tokio` and `tls-rustls`.

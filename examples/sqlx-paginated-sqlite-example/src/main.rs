@@ -1,15 +1,15 @@
 use actix_web::{web, App, HttpResponse, HttpServer};
 use log::info;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use sqlx::sqlite::{Sqlite, SqlitePool, SqlitePoolOptions};
 use sqlx::FromRow;
-use sqlx_paginated::{paginated_query_as, FlatQueryParams, PaginatedResponse};
+use sqlx_paginated::{paginated_query_as, Fields, FlatQueryParams, PaginatedResponse};
 
 const DATABASE_URL: &str = "sqlite://test_database.db";
 const BIND_ADDRESS: &str = "127.0.0.1:8080";
 const MAX_CONNECTIONS: u32 = 5;
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow, Default)]
+#[derive(Debug, Clone, Fields, FromRow, Serialize)]
 struct User {
     id: String,
     first_name: String,
@@ -20,7 +20,7 @@ struct User {
     updated_at: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow, Default)]
+#[derive(Debug, Clone, Fields, FromRow, Serialize)]
 struct Product {
     id: String,
     name: String,

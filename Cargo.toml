@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "crates/sqlx-paginated",
     "crates/sqlx-paginated-derive",
+    "examples/sqlx-paginated-sqlite-example"
 ]
 
 [workspace.package]

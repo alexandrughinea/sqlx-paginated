@@ -198,9 +198,6 @@ fn parse_field(field: &Field, rename_all: Option<&str>) -> syn::Result<FieldBeha
                     return Err(meta.error("duplicate sqlx field attribute `skip`"));
                 }
                 skip = true;
-            } else {
-                let path = meta.path.to_token_stream().to_string().replace(' ', "");
-                return Err(meta.error(format!("unknown sqlx field attribute `{path}`")));
             }
             Ok(())
         })?;

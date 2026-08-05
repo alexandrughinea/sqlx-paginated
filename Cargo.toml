@@ -1,42 +1,16 @@
-[package]
-name = "sqlx-paginated"
-version = "0.5.0"
+[workspace]
+resolver = "2"
+members = [
+    "crates/sqlx-paginated",
+    "crates/sqlx-paginated-derive",
+    "examples/sqlx-paginated-sqlite-example"
+]
+
+[workspace.package]
 edition = "2021"
+version = "0.6.0"
 authors = ["@alexandrughinea"]
 description = "A flexible, type-safe SQLx query builder for dynamic web APIs, offering seamless pagination, searching, filtering, and sorting."
 license = "MIT"
 repository = "https://github.com/alexandrughinea/sqlx-paginated"
 documentation = "https://docs.rs/sqlx-paginated"
-
-[features]
-tracing = ["tracing/default"]
-postgres = ["sqlx/postgres"]
-sqlite = ["sqlx/sqlite"]
-mysql = ["sqlx/mysql"] # Planned - Q2 2026
-default = ["postgres"]
-
-[lib]
-path = "src/lib.rs"
-
-[dependencies]
-sqlx = { version = "0.9.0", default-features = false, features = [
-    "runtime-tokio",
-    "tls-rustls",
-    "macros",
-    "postgres",
-    "sqlite",
-    "uuid",
-    "chrono",
-    "json"
-] }
-chrono = { version = "^0.4", features = ["serde"] }
-tracing = { version = "^0.1", default-features = false }
-serde = { version = "^1.0", features = ["derive"] }
-serde_json = "^1.0"
-tokio = "^1.52"
-
-[dev-dependencies]
-anyhow = "^1.0"
-tokio = { version = "1.47.1", features = ["macros", "rt-multi-thread"] }
-testcontainers = "^0.27"
-testcontainers-modules = { version = "^0.15", features = ["postgres"] }

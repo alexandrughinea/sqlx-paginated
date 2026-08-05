@@ -125,7 +125,7 @@ let params = QueryParamsBuilder::<User>::new()
 
 3. **Advanced builder patterns**
 - Optional fluent API for query parameters (QueryParams) which allow defining search, search location, date filtering, ordering, and custom filtering.
-- Fluent API for the entire supported feature set, more here: [advanced example](src/paginated_query_as/examples/paginated_query_builder_advanced_examples.rs)
+- Fluent API for the entire supported feature set, more here: [advanced example](crates/sqlx-paginated/src/paginated_query_as/examples/paginated_query_builder_advanced_examples.rs)
 
 ```rust
     paginated_query_as::<UserExample, Postgres>("SELECT * FROM users")
@@ -169,19 +169,19 @@ Add to `Cargo.toml`:
 **For PostgreSQL:**
 ```toml
 [dependencies]
-sqlx_paginated = { version = "0.5.0", features = ["postgres"] }
+sqlx_paginated = { version = "0.6.0", features = ["postgres"] }
 ```
 
 **For SQLite:**
 ```toml
 [dependencies]
-sqlx_paginated = { version = "0.5.0", features = ["sqlite"] }
+sqlx_paginated = { version = "0.6.0", features = ["sqlite"] }
 ```
 
 **For both:**
 ```toml
 [dependencies]
-sqlx_paginated = { version = "0.5.0", features = ["postgres", "sqlite"] }
+sqlx_paginated = { version = "0.6.0", features = ["postgres", "sqlite"] }
 ```
 
 ## SQLx compatibility
@@ -191,17 +191,57 @@ sqlx_paginated = { version = "0.5.0", features = ["postgres", "sqlite"] }
 | `sqlx-paginated` | SQLx version |
 |------------------|--------------|
 | `0.3.x`          | `0.8.x`      |
-| `0.4.x`          | `0.9.x`      |
+| `>=0.4`          | `0.9.x`      |
 
 If you're on SQLx 0.8, stay on `sqlx-paginated = "0.3"`. When upgrading to SQLx 0.9, bump both dependencies together:
 
 ```toml
 [dependencies]
 sqlx = { version = "0.9", features = ["runtime-tokio", "tls-rustls", "postgres"] }
-sqlx_paginated = { version = "0.4", features = ["postgres"] }
+sqlx_paginated = { version = "0.6", features = ["postgres"] }
 ```
 
 Note: SQLx 0.9 split the old `runtime-tokio-rustls` feature into `runtime-tokio` and `tls-rustls`.
+
+## Breaking changes in 0.6.0
+
+Starting with version 0.6.0, a new derive macro was introduced to handle column names. Previously, it was required to implement
+`serde::Serialize` and `Default`. The new derive macro is called `Fields`. This generates a `{structName}Field` enum.
+It should be used alongside `sqlx::FromRow`.
+
+```rust
+// Old example
+#[derive(Serialize, Default, FromRow)]
+struct User { ... }
+```
+
+```rust
+#[derive(Fields, FromRow)]
+struct User { ... }
+```
+
+The generated enum supports the actual column names if there are any sqlx naming overrides or flattening.
+
+The enum can also be used in the query building as it implements `Into<String>`:
+
+```rust
+    // Old example
+let params = QueryParamsBuilder::<User>::new()
+    .with_pagination(1, 10)
+    .with_sort("created_at", QuerySortDirection::Descending)
+    .with_search("john", vec!["first_name", "last_name", "email"])
+    .build();
+```
+
+```rust
+let params = QueryParamsBuilder::<User>::new()
+    .with_pagination(1, 10)
+    .with_sort(UserField::CreatedAt, QuerySortDirection::Descending)
+    .with_search("john", vec![UserField::FirstName, UserField::LastName, UserField::Email])
+    .build();
+```
+
+replacement
 
 ## Quick start
 
@@ -209,10 +249,10 @@ Note: SQLx 0.9 split the old `runtime-tokio-rustls` feature into `runtime-tokio`
 
 **PostgreSQL:**
 ```rust
-use sqlx::{PgPool, Postgres};
-use sqlx_paginated::{QueryParamsBuilder, QuerySortDirection, paginated_query_as};
+use sqlx::{PgPool, Postgres, FromRow};
+use sqlx_paginated::{QueryParamsBuilder, QuerySortDirection, paginated_query_as, Fields};
 
-#[derive(sqlx::FromRow, serde::Serialize, Default)]
+#[derive(FromRow, Fields)]
 struct User {
     id: i64,
     first_name: String,
@@ -225,8 +265,8 @@ struct User {
 async fn get_users(pool: &PgPool) -> Result<PaginatedResponse<User>, sqlx::Error> {
     let params = QueryParamsBuilder::<User>::new()
         .with_pagination(1, 10)
-        .with_sort("created_at", QuerySortDirection::Descending)
-        .with_search("john", vec!["first_name", "last_name", "email"])
+        .with_sort(UserField::CreatedAt, QuerySortDirection::Descending)
+        .with_search("john", vec![UserField::FirstName, UserField::LastName, UserField::Email])
         .build();
     
     // Function syntax (recommended)
@@ -248,8 +288,8 @@ use sqlx_paginated::{QueryParamsBuilder, QuerySortDirection, paginated_query_as}
 async fn get_users(pool: &SqlitePool) -> Result<PaginatedResponse<User>, sqlx::Error> {
     let params = QueryParamsBuilder::<User>::new()
         .with_pagination(1, 10)
-        .with_sort("created_at", QuerySortDirection::Descending)
-        .with_search("john", vec!["first_name", "last_name", "email"])
+        .with_sort(UserField::CreatedAt, QuerySortDirection::Descending)
+        .with_search("john", vec![UserField::FirstName, UserField::LastName, UserField::Email])
         .build();
     
     // Function syntax (recommended)
@@ -278,11 +318,11 @@ Run with: `cd examples/sqlx-paginated-sqlite-example && cargo run`
 
 #### Query building code examples
 
-For detailed query building patterns, see **[src/paginated_query_as/examples](src/paginated_query_as/examples/)**:
+For detailed query building patterns, see **[src/paginated_query_as/examples](crates/sqlx-paginated/src/paginated_query_as/examples/)**:
 
-- **[query_filters_examples.rs](src/paginated_query_as/examples/query_filters_examples.rs)** - Examples of all filter operators including comparison operators, IN/NOT IN, NULL checks, LIKE patterns, and complex filtering scenarios
-- **[query_builder_examples.rs](src/paginated_query_as/examples/query_builder_examples.rs)** - Query builder examples showing safe defaults and custom query construction for PostgreSQL and SQLite
-- **[paginated_query_builder_advanced_examples.rs](src/paginated_query_as/examples/paginated_query_builder_advanced_examples.rs)** - Advanced query builder usage with custom conditions and protection disabling
+- **[query_filters_examples.rs](crates/sqlx-paginated/src/paginated_query_as/examples/query_filters_examples.rs)** - Examples of all filter operators including comparison operators, IN/NOT IN, NULL checks, LIKE patterns, and complex filtering scenarios
+- **[query_builder_examples.rs](crates/sqlx-paginated/src/paginated_query_as/examples/query_builder_examples.rs)** - Query builder examples showing safe defaults and custom query construction for PostgreSQL and SQLite
+- **[paginated_query_builder_advanced_examples.rs](crates/sqlx-paginated/src/paginated_query_as/examples/paginated_query_builder_advanced_examples.rs)** - Advanced query builder usage with custom conditions and protection disabling
 
 ### Response example
 ```json
@@ -432,8 +472,8 @@ QueryParamsBuilder::<Product>::new()
 
 // Convenience methods
 QueryParamsBuilder::<User>::new()
-    .with_filter_in("role", vec!["admin", "moderator"])
-    .with_filter_null("deleted_at", true)
+    .with_filter_in(UserField::Role, vec!["admin", "moderator"])
+    .with_filter_null(UserField::DeletedAt, true)
     .build()
 
 // Using QueryFilterCondition
@@ -441,8 +481,8 @@ use sqlx_paginated::QueryFilterCondition;
 use std::collections::HashMap;
 
 let mut filters = HashMap::new();
-filters.insert("price".to_string(), QueryFilterCondition::greater_than("50.00"));
-filters.insert("status".to_string(), QueryFilterCondition::not_equal("deleted"));
+filters.insert(ProductField::Price, QueryFilterCondition::greater_than("50.00"));
+filters.insert(ProductField::Status, QueryFilterCondition::not_equal("deleted"));
 
 QueryParamsBuilder::<Product>::new()
     .with_filter_conditions(filters)
@@ -508,14 +548,14 @@ GET /products?search=laptop&search_columns=name,description
 use sqlx_paginated::{QueryParamsBuilder, QuerySortDirection, QueryFilterOperator};
 
 let params = QueryParamsBuilder::<Product>::new()
-    .with_search("laptop", vec!["name", "description"])
-    .with_filter_operator("price", QueryFilterOperator::GreaterOrEqual, "500")
-    .with_filter_operator("price", QueryFilterOperator::LessOrEqual, "2000")
-    .with_filter_operator("stock", QueryFilterOperator::GreaterThan, "0")
-    .with_filter_in("category", vec!["computers", "electronics"])
-    .with_filter("status", Some("active"))
-    .with_filter_null("deleted_at", true)
-    .with_sort("price", QuerySortDirection::Ascending)
+    .with_search("laptop", vec![ProductField::Name, ProductField::Description])
+    .with_filter_operator(ProductField::Price, QueryFilterOperator::GreaterOrEqual, "500")
+    .with_filter_operator(ProductField::Price, QueryFilterOperator::LessOrEqual, "2000")
+    .with_filter_operator(ProductField::Stock, QueryFilterOperator::GreaterThan, "0")
+    .with_filter_in(ProductField::Category, vec!["computers", "electronics"])
+    .with_filter(ProductField::Status, Some("active"))
+    .with_filter_null(ProductField::DeletedAt, true)
+    .with_sort(ProductField::Price, QuerySortDirection::Ascending)
     .with_pagination(1, 24)
     .build();
 ```
@@ -527,7 +567,7 @@ against its own fields.
 - We should also receive a paginated response back with the matching records.
 
 ```rust
-#[derive(Serialize, Deserialize, FromRow, Default)]
+#[derive(Serialize, Deserialize, FromRow, Fields)]
 pub struct User {
     pub id: Option<Uuid>,
     pub first_name: String,

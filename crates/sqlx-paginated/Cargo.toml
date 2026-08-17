@@ -20,7 +20,7 @@ default = ["postgres"]
 path = "src/lib.rs"
 
 [dependencies]
-sqlx-paginated-derive = { path = "../sqlx-paginated-derive", version = "0.6.0" }
+sqlx-paginated-derive = { path = "../sqlx-paginated-derive", version = "0.6" }
 sqlx = { version = "0.9.0", default-features = false, features = [
     "runtime-tokio",
     "tls-rustls",

@@ -2709,7 +2709,7 @@ dependencies = [
 
 [[package]]
 name = "sqlx-paginated"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2725,7 +2725,7 @@ dependencies = [
 
 [[package]]
 name = "sqlx-paginated-derive"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "heck",
  "proc-macro2",

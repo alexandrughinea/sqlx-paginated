@@ -1,0 +1,19 @@
+[package]
+name = "sqlx-paginated-derive"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description.workspace = true
+license.workspace = true
+readme = "README.md"
+repository.workspace = true
+documentation.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { version = "2", features = ["full"] }
+quote = "1"
+proc-macro2 = "1"
+heck = { version = "^0.5" }
